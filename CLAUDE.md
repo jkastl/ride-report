@@ -23,16 +23,11 @@ Hosted on GitHub Pages from the `main` branch root.
 - Soft noise floor: magnitudes below 0.01G shrink to zero
 - Motion axes are fixed to the hardware, so X/Y are rotated into the screen
   frame; the buffered trail is rotated too, so history survives a turn
-- The angle comes from `screen.orientation.angle`, then `window.orientation`,
-  plus a manual offset from the `Rotate` button (localStorage `rr-rotate`).
-  Viewport aspect is NOT used: Split View hands a landscape iPad a
-  portrait-shaped window
-- iPadOS desktop-class Safari exposes neither API, so `Rotate` is the only
-  correction there
-- The version label shows the resolved angle, plus raw orientation inputs when
-  `Raw Data` is on
+- The angle comes from `window.orientation`, then `screen.orientation.angle`.
+  That order matters: iPadOS leaves `screen.orientation.angle` at 0 however the
+  device is held, so asking it first reads a confident zero and stops
 - Clear Trail, Pause, Keep Awake (screen wake lock), 🔋 Saver, Smoothing,
-  Invert Axes, Raw Data and Rotate controls, two rows of four
+  Invert Axes and Raw Data controls, two rows
 - 🔋 Saver toggles the render tier: off (default) is 60fps / DPR 3 / 480 trail points
   / 20Hz readout, on is 30fps / DPR 2 / 360 points / 10Hz readout
 

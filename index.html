@@ -169,7 +169,7 @@
 <div id="canvas-wrap">
   <canvas id="canvas"></canvas>
   <button id="start-btn">Enable Motion</button>
-  <span id="version">v1.28 2026-09-18</span>
+  <span id="version">v1.29 2026-09-18</span>
   <div id="controls">
     <div class="ctrl-row">
       <button class="ctrl-btn" id="btn-clear">Clear Trail</button>
@@ -181,7 +181,6 @@
       <button class="ctrl-btn on" id="btn-smooth">Smoothing</button>
       <button class="ctrl-btn on" id="btn-invert">Invert Axes</button>
       <button class="ctrl-btn" id="btn-raw">Raw Data</button>
-      <button class="ctrl-btn" id="btn-rotate">Rotate</button>
     </div>
   </div>
 </div>
@@ -222,7 +221,6 @@
   const btnWake   = document.getElementById('btn-wake');
   const btnRaw    = document.getElementById('btn-raw');
   const btnSaver  = document.getElementById('btn-saver');
-  const btnRotate = document.getElementById('btn-rotate');
 
   const G = 9.81;
   const MAX_G = 0.5;
@@ -278,7 +276,7 @@
   let peakMag = 0, lastZ = 0;
   let lastSample = 0, lastReadout = 0, lastFrame = 0;
   let animId = null, resizeTimer = null, sensorTimer = null;
-  let screenAngle = 0, rotC = 1, rotS = 0, manualAngle = 0;
+  let screenAngle = 0, rotC = 1, rotS = 0;
   let listening = false, fallback = false, nullSamples = 0;
   let sensorDead = false, stalled = false;
   let flashTimer = null;
@@ -319,17 +317,13 @@
     return (head - count + i + CAP) % CAP;
   }
 
-  // Viewport shape cannot stand in for device orientation: in Split View a
-  // landscape iPad hands out a portrait-shaped window.
-  function detectedAngle() {
+  // window.orientation first: iPadOS leaves screen.orientation.angle at 0 however
+  // the device is held, so asking it first reads a confident zero and stops.
+  function currentScreenAngle() {
+    if (typeof window.orientation === 'number') return (window.orientation % 360 + 360) % 360;
     const so = window.screen && screen.orientation;
     if (so && typeof so.angle === 'number') return (so.angle % 360 + 360) % 360;
-    if (typeof window.orientation === 'number') return (window.orientation % 360 + 360) % 360;
     return 0;
-  }
-
-  function currentScreenAngle() {
-    return (detectedAngle() + manualAngle) % 360;
   }
 
   // The motion axes are fixed to the hardware and ignore screen rotation, so
@@ -353,7 +347,6 @@
     const r = screenAngle * Math.PI / 180;
     rotC = Math.cos(r);
     rotS = Math.sin(r);
-    showVersion();
     redrawIfIdle();
   }
 
@@ -760,16 +753,7 @@
     optRaw = v;
     readout.classList.toggle('hidden', !optRaw);
     controls.classList.toggle('above-readout', optRaw);
-    showVersion();
     resizeCanvas();
-  });
-
-  btnRotate.addEventListener('click', () => {
-    manualAngle = (manualAngle + 90) % 360;
-    try { localStorage.setItem('rr-rotate', manualAngle); } catch (e) {}
-    btnRotate.classList.toggle('on', manualAngle !== 0);
-    applyScreenAngle();
-    showVersion();
   });
   makeToggle(btnSaver, () => optSaver, v => {
     optSaver = v;
@@ -814,7 +798,7 @@
   function onResize() {
     applyScreenAngle();
     clearTimeout(resizeTimer);
-    resizeTimer = setTimeout(() => { applyScreenAngle(); showVersion(); resizeCanvas(); }, 120);
+    resizeTimer = setTimeout(() => { applyScreenAngle(); resizeCanvas(); }, 120);
   }
   window.addEventListener('resize', onResize);
   window.addEventListener('orientationchange', onResize);
@@ -825,21 +809,6 @@
   const versionText = versionEl.textContent.trim();
   const localVersion = (versionText.match(/v[\d.]+/) || [])[0];
   let lastUpdateCheck = 0, updateOffered = false;
-
-  function showVersion() {
-    if (updateOffered) return;
-    let t = versionText + ' \u00b7 ' + screenAngle + '\u00b0';
-    if (optRaw) {
-      const so = window.screen && screen.orientation;
-      const soA = so && typeof so.angle === 'number' ? so.angle : '\u2013';
-      const woA = typeof window.orientation === 'number' ? window.orientation : '\u2013';
-      t += '  [so ' + soA + ' \u00b7 wo ' + woA +
-           ' \u00b7 scr ' + screen.width + '\u00d7' + screen.height +
-           ' \u00b7 vp ' + window.innerWidth + '\u00d7' + window.innerHeight +
-           ' \u00b7 man ' + manualAngle + '\u00b0]';
-    }
-    versionEl.textContent = t;
-  }
 
   function storedReload() {
     try { return sessionStorage.getItem('rr-reloaded'); } catch (e) { return null; }
@@ -880,10 +849,7 @@
   }
 
   startBtn.addEventListener('click', requestPermission);
-  try { manualAngle = ((parseInt(localStorage.getItem('rr-rotate'), 10) || 0) % 360 + 360) % 360; } catch (e) {}
-  btnRotate.classList.toggle('on', manualAngle !== 0);
   applyScreenAngle();
-  showVersion();
   resizeCanvas();
   checkForUpdate();
   setInterval(checkForUpdate, UPDATE_EVERY_MS);

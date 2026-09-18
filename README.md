@@ -32,12 +32,10 @@ rotated with them, so turning the phone or tablet mid-ride keeps past bumps
 pointing the way they actually happened. Z is normal to the screen either way
 and is left alone.
 
-The angle is read from `screen.orientation.angle`, then `window.orientation`.
-Neither exists in iPadOS desktop-class Safari, and window shape is no
-substitute — in Split View a landscape iPad hands out a portrait-shaped window.
-When detection comes up empty, **Rotate** turns the frame a quarter at a time
-until the plot matches the world; the choice is remembered. The resolved angle
-sits next to the version label, and `Raw Data` adds the raw inputs behind it.
+The angle is read from `window.orientation`, falling back to
+`screen.orientation.angle`. That order is the whole trick: iPadOS leaves
+`screen.orientation.angle` at 0 no matter how the iPad is held, so asking it
+first returns a confident zero and the rotation never happens.
 
 ## Staying current
 
@@ -57,8 +55,7 @@ offers a tap instead, rather than wiping the trail.
 | **Invert Axes** | Plot the direction you're thrown rather than the direction the aircraft accelerates |
 | **Keep Awake** | Hold a screen wake lock so the phone doesn't sleep mid-flight. Off by default |
 | **🔋 Saver** | Halve the render cost for long unplugged rides. Off by default |
-| **Raw Data** | Show the live numeric X/Y/Z readout along the bottom. Prints the same values the trail is drawn from, so it follows `Smoothing`, and adds orientation diagnostics to the version label |
-| **Rotate** | Turn the plot a quarter clockwise, for when the device cannot report its own orientation. Remembered across reloads |
+| **Raw Data** | Show the live numeric X/Y/Z readout along the bottom. Prints the same values the trail is drawn from, so it follows `Smoothing` |
 
 ### Render tiers
 
