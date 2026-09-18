@@ -24,12 +24,15 @@ Hosted on GitHub Pages from the `main` branch root.
 - Motion axes are fixed to the hardware, so X/Y are rotated into the screen
   frame; the buffered trail is rotated too, so history survives a turn
 - The angle comes from `screen.orientation.angle`, then `window.orientation`,
-  reconciled against the viewport aspect: a tablet whose natural orientation is
-  landscape reports 0 there while motion stays in the portrait frame, and with
-  no API at all (desktop-class Safari) the aspect is the only signal
-- The resolved angle is appended to the version label as a diagnostic
+  plus a manual offset from the `Rotate` button (localStorage `rr-rotate`).
+  Viewport aspect is NOT used: Split View hands a landscape iPad a
+  portrait-shaped window
+- iPadOS desktop-class Safari exposes neither API, so `Rotate` is the only
+  correction there
+- The version label shows the resolved angle, plus raw orientation inputs when
+  `Raw Data` is on
 - Clear Trail, Pause, Keep Awake (screen wake lock), 🔋 Saver, Smoothing,
-  Invert Axes and Raw Data controls, two rows
+  Invert Axes, Raw Data and Rotate controls, two rows of four
 - 🔋 Saver toggles the render tier: off (default) is 60fps / DPR 3 / 480 trail points
   / 20Hz readout, on is 30fps / DPR 2 / 360 points / 10Hz readout
 
