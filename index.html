@@ -2,13 +2,14 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<meta name="color-scheme" content="dark">
 <title>Turbulence Tracker</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
     background: #0a0a0f;
-    color: #e0e0e0;
+    color: #f0f2f8;
     font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
     display: flex;
     flex-direction: column;
@@ -16,28 +17,32 @@
     overflow: hidden;
     touch-action: none;
     user-select: none;
+    -webkit-text-size-adjust: 100%;
   }
   #header {
     padding: 12px 16px 8px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border-bottom: 1px solid #1e1e2e;
+    border-bottom: 1px solid #262640;
   }
   #header h1 {
     font-size: 16px;
     font-weight: 600;
     letter-spacing: 0.5px;
-    color: #c0c8ff;
+    color: #d6dcff;
   }
   #status {
-    font-size: 11px;
-    color: #666;
+    font-size: 12px;
+    color: #a9b0cc;
+    text-align: right;
   }
-  #status.active { color: #4ade80; }
+  #status.active { color: #5ef08f; }
+  #status.warn { color: #fbbf24; }
+  #status.err { color: #ff7b7b; }
   #version {
-    font-size: 10px;
-    color: #888;
+    font-size: 11px;
+    color: #b6bcd8;
     position: absolute;
     bottom: 6px;
     left: 8px;
@@ -58,9 +63,10 @@
     display: grid;
     grid-template-columns: 1fr 1fr 1fr;
     gap: 1px;
-    background: #1a1a2a;
-    border-top: 1px solid #1e1e2e;
+    background: #242440;
+    border-top: 1px solid #262640;
   }
+  #readout.hidden { display: none; }
   .val-box {
     background: #0d0d1a;
     padding: 10px 12px;
@@ -68,7 +74,7 @@
   }
   .val-label {
     font-size: 10px;
-    color: #556;
+    color: #9aa2c2;
     text-transform: uppercase;
     letter-spacing: 0.8px;
     margin-bottom: 2px;
@@ -79,9 +85,9 @@
     font-variant-numeric: tabular-nums;
     letter-spacing: -0.5px;
   }
-  #val-x .val-num { color: #f87171; }
-  #val-y .val-num { color: #60a5fa; }
-  #val-z .val-num { color: #a78bfa; }
+  #val-x .val-num { color: #ff9494; }
+  #val-y .val-num { color: #84c5ff; }
+  #val-z .val-num { color: #c3aeff; }
   #start-btn {
     position: absolute;
     top: 50%;
@@ -104,28 +110,34 @@
     position: absolute;
     bottom: 8px;
     right: 8px;
+    left: 8px;
     display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
     gap: 6px;
     opacity: 0;
+    pointer-events: none;
     transition: opacity 0.3s;
   }
-  #controls.visible { opacity: 1; }
+  #controls.visible { opacity: 1; pointer-events: auto; }
   .ctrl-btn {
-    background: rgba(255,255,255,0.07);
-    color: #aaa;
-    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(255,255,255,0.10);
+    color: #e2e6f8;
+    border: 1px solid rgba(255,255,255,0.20);
     border-radius: 8px;
-    padding: 6px 12px;
+    padding: 6px 11px;
     font-size: 12px;
+    font-family: inherit;
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
   }
-  .ctrl-btn:active { background: rgba(255,255,255,0.14); }
+  .ctrl-btn:active { background: rgba(255,255,255,0.20); }
   .ctrl-btn.on {
-    background: rgba(99,102,241,0.25);
-    color: #c0c8ff;
-    border-color: rgba(99,102,241,0.5);
+    background: rgba(99,102,241,0.35);
+    color: #dde3ff;
+    border-color: rgba(129,132,255,0.7);
   }
+  .ctrl-btn:disabled { opacity: 0.4; }
 </style>
 </head>
 <body>
@@ -138,17 +150,19 @@
 <div id="canvas-wrap">
   <canvas id="canvas"></canvas>
   <button id="start-btn">Enable Motion</button>
-  <span id="version">v1.10 2026-04-03</span>
+  <span id="version">v1.11 2026-09-18</span>
   <div id="controls">
     <button class="ctrl-btn" id="btn-clear">Clear</button>
     <button class="ctrl-btn" id="btn-pause">Pause</button>
     <button class="ctrl-btn on" id="btn-smooth">Smooth</button>
     <button class="ctrl-btn on" id="btn-invert">Invert</button>
+    <button class="ctrl-btn on" id="btn-curve">Curve</button>
+    <button class="ctrl-btn" id="btn-wake">Awake</button>
     <button class="ctrl-btn" id="btn-raw">Raw #s</button>
   </div>
 </div>
 
-<div id="readout">
+<div id="readout" class="hidden">
   <div class="val-box" id="val-x">
     <div class="val-label">X &mdash; Left/Right</div>
     <div class="val-num" id="num-x">+0.000G</div>
@@ -168,10 +182,11 @@
   'use strict';
 
   const canvas = document.getElementById('canvas');
-  const ctx = canvas.getContext('2d');
+  const ctx = canvas.getContext('2d', { alpha: false });
   const statusEl = document.getElementById('status');
   const startBtn = document.getElementById('start-btn');
   const controls = document.getElementById('controls');
+  const readout = document.getElementById('readout');
   const numX = document.getElementById('num-x');
   const numY = document.getElementById('num-y');
   const numZ = document.getElementById('num-z');
@@ -179,113 +194,233 @@
   const btnPause  = document.getElementById('btn-pause');
   const btnSmooth = document.getElementById('btn-smooth');
   const btnInvert = document.getElementById('btn-invert');
+  const btnCurve  = document.getElementById('btn-curve');
+  const btnWake   = document.getElementById('btn-wake');
   const btnRaw    = document.getElementById('btn-raw');
 
-  // Each point is the raw acceleration sample {x, y} in m/s²
-  // Center of canvas = (0,0) = calm. Distance from center = turbulence intensity.
-  const MAX_HISTORY = 900; // ~15 seconds at 60 Hz
-  const history = [];
+  const G = 9.81;
+  const MAX_G = 0.5;
+  const CURVE_EXP = 0.55;
+  const HISTORY_MS = 15000;
+  const CAP = 2400;
+  const MAX_RENDER_POINTS = 360;
+  const TRAIL_BUCKETS = 18;
+  const MAX_DPR = 2;
+  const FRAME_MS = 1000 / 30;
+  const SMOOTH_TAU = 0.2;
+  const GRAVITY_TAU = 1.0;
+  const PEAK_TAU = 3.3;
+  const READOUT_MS = 100;
+  const SENSOR_TIMEOUT_MS = 2500;
+  const STALL_MS = 3000;
 
-  let paused = false;
-  let started = false;
-  let optSmooth = true;
-  let optInvert = true;
-  let optRaw    = false; // tracks visibility of readout
-  let cx = 0, cy = 0;
-  let dpr = window.devicePixelRatio || 1;
-
-  // Scale: px per G — sized so ±MAX_G fills the canvas radius
-  const G = 9.81;          // m/s² per G
-  const MAX_G = 0.5;       // G — severe turbulence threshold
-  let scale = 1;           // recomputed in resizeCanvas
-
-  // Smoothed values in G — used for both readout and history
-  let curX = 0, curY = 0, curZ = 0;
-  const SMOOTH = 0.08;
-
-  // Peak magnitude for the level badge (decays over time)
-  let peakMag = 0;
-  const PEAK_DECAY = 0.995; // per frame
-
-  // Turbulence level thresholds (G)
   const LEVELS = [
-    { label: 'Severe',   min: 0.30, color: '#ff4444' },
-    { label: 'Moderate', min: 0.12, color: '#fb923c' },
-    { label: 'Light',    min: 0.03, color: '#facc15' },
-    { label: 'Calm',     min: 0,    color: '#4ade80' },
+    { label: 'Severe',   min: 0.30, color: '#ff5c5c' },
+    { label: 'Moderate', min: 0.12, color: '#ffa94d' },
+    { label: 'Light',    min: 0.03, color: '#ffe066' },
+    { label: 'Calm',     min: 0,    color: '#5ef08f' },
   ];
 
+  const bufX = new Float32Array(CAP);
+  const bufY = new Float32Array(CAP);
+  const bufT = new Float64Array(CAP);
+  let head = 0, count = 0;
+
+  const ptX = new Float32Array(MAX_RENDER_POINTS);
+  const ptY = new Float32Array(MAX_RENDER_POINTS);
+
+  const bg = document.createElement('canvas');
+  const bgCtx = bg.getContext('2d', { alpha: false });
+
+  let started = false, paused = false, hidden = false;
+  let optSmooth = true, optInvert = true, optCurve = true, optRaw = false, optWake = false;
+  let cx = 0, cy = 0, radius = 1, dpr = 1;
+  let curX = 0, curY = 0, curZ = 0;
+  let gravX = 0, gravY = 0, gravZ = 0, gravInit = false;
+  let peakMag = 0, lastZ = 0;
+  let lastSample = 0, lastReadout = 0, lastFrame = 0;
+  let animId = null, resizeTimer = null, sensorTimer = null;
+  let listening = false, fallback = false, nullSamples = 0;
+  let sensorDead = false, stalled = false;
+  let flashTimer = null;
+  let wakeLock = null;
+
+  function setStatus(text, cls) {
+    statusEl.textContent = text;
+    statusEl.className = cls || '';
+  }
+
+  function liveStatus() {
+    if (flashTimer) { clearTimeout(flashTimer); flashTimer = null; }
+    if (!started) { setStatus('Waiting', ''); return; }
+    if (paused) { setStatus('Paused', ''); return; }
+    if (sensorDead) { setStatus('No sensor data', 'err'); return; }
+    if (stalled) { setStatus('Sensor stalled', 'warn'); return; }
+    if (fallback) setStatus('Live · est. gravity', 'warn');
+    else setStatus('Live', 'active');
+  }
+
+  function flash(text, cls) {
+    setStatus(text, cls);
+    if (flashTimer) clearTimeout(flashTimer);
+    flashTimer = setTimeout(function () { flashTimer = null; liveStatus(); }, 2500);
+  }
+
+  function push(x, y, t) {
+    bufX[head] = x;
+    bufY[head] = y;
+    bufT[head] = t;
+    head = (head + 1) % CAP;
+    if (count < CAP) count++;
+    const cutoff = t - HISTORY_MS;
+    while (count > 1 && bufT[(head - count + CAP) % CAP] < cutoff) count--;
+  }
+
+  function idx(i) {
+    return (head - count + i + CAP) % CAP;
+  }
+
+  function radiusPx(magG) {
+    if (magG <= 0) return 0;
+    if (!optCurve) return magG / MAX_G * radius;
+    return Math.pow(magG / MAX_G, CURVE_EXP) * radius;
+  }
+
+  function projectX(x, mag, r) {
+    const px = mag > 1e-6 ? x / mag * r : 0;
+    return optInvert ? cx - px : cx + px;
+  }
+
+  function projectY(y, mag, r) {
+    const py = mag > 1e-6 ? y / mag * r : 0;
+    return optInvert ? cy + py : cy - py;
+  }
+
   function getLevel(mag) {
-    return LEVELS.find(l => mag >= l.min) || LEVELS[LEVELS.length - 1];
+    for (let i = 0; i < LEVELS.length; i++) if (mag >= LEVELS[i].min) return LEVELS[i];
+    return LEVELS[LEVELS.length - 1];
   }
 
   function resizeCanvas() {
     const wrap = canvas.parentElement;
-    dpr = window.devicePixelRatio || 1;
-    canvas.width = wrap.clientWidth * dpr;
-    canvas.height = wrap.clientHeight * dpr;
-    canvas.style.width = wrap.clientWidth + 'px';
-    canvas.style.height = wrap.clientHeight + 'px';
+    const w = wrap.clientWidth, h = wrap.clientHeight;
+    if (!w || !h) return;
+    dpr = Math.min(window.devicePixelRatio || 1, MAX_DPR);
+    canvas.width = bg.width = Math.round(w * dpr);
+    canvas.height = bg.height = Math.round(h * dpr);
+    canvas.style.width = w + 'px';
+    canvas.style.height = h + 'px';
     cx = canvas.width / 2;
     cy = canvas.height / 2;
-    // Fit MAX_G into 90% of the smaller half-dimension
-    scale = Math.min(cx, cy) * 0.9 / MAX_G;
-    draw();
+    radius = Math.min(cx, cy) * 0.9;
+    renderBackground();
+    draw(0);
   }
 
-  function fmt(v) {
-    return (v >= 0 ? '+' : '') + v.toFixed(3) + 'G';
-  }
-
-  function draw() {
-    const w = canvas.width;
-    const h = canvas.height;
-
-    ctx.fillStyle = '#0a0a0f';
-    ctx.fillRect(0, 0, w, h);
-
+  function renderBackground() {
+    const w = bg.width, h = bg.height;
+    bgCtx.fillStyle = '#0a0a0f';
+    bgCtx.fillRect(0, 0, w, h);
     if (!started) return;
 
-    drawRings();
+    bgCtx.strokeStyle = 'rgba(255,255,255,0.12)';
+    bgCtx.lineWidth = 1;
+    bgCtx.beginPath(); bgCtx.moveTo(cx, 0); bgCtx.lineTo(cx, h); bgCtx.stroke();
+    bgCtx.beginPath(); bgCtx.moveTo(0, cy); bgCtx.lineTo(w, cy); bgCtx.stroke();
 
-    if (history.length < 2) return;
+    bgCtx.font = (10 * dpr) + 'px -apple-system, sans-serif';
+    bgCtx.fillStyle = 'rgba(255,255,255,0.38)';
+    bgCtx.textAlign = 'left';
+    bgCtx.textBaseline = 'middle';
+    bgCtx.fillText('+X', cx + 5 * dpr, cy - 9 * dpr);
+    bgCtx.textAlign = 'center';
+    bgCtx.fillText('+Y', cx, 14 * dpr);
 
-    // Decay peak
-    peakMag *= PEAK_DECAY;
+    const rings = [0.05, 0.12, 0.3, MAX_G];
+    rings.forEach(r => {
+      const pr = radiusPx(r);
+      bgCtx.beginPath();
+      bgCtx.arc(cx, cy, pr, 0, Math.PI * 2);
+      bgCtx.strokeStyle = 'rgba(255,255,255,0.14)';
+      bgCtx.lineWidth = 1;
+      bgCtx.stroke();
 
-    // Draw trail as bezier spline — midpoints are on-curve, history points are control points
-    const n = history.length;
-    const sx = i => optInvert ? cx - history[i].x * scale : cx + history[i].x * scale;
-    const sy = i => optInvert ? cy + history[i].y * scale : cy - history[i].y * scale;
+      bgCtx.fillStyle = 'rgba(255,255,255,0.4)';
+      bgCtx.textAlign = 'left';
+      bgCtx.textBaseline = 'middle';
+      bgCtx.fillText(r + 'G', cx + pr + 4 * dpr, cy);
+    });
+  }
 
-    for (let i = 1; i < n; i++) {
-      const t = i / n;
-      const alpha = Math.pow(t, 1.5) * 0.88 + 0.04;
+  function draw(dt) {
+    ctx.drawImage(bg, 0, 0);
+    if (!started) return;
 
-      // Start at midpoint of previous segment, end at midpoint of this segment
-      const x0 = i === 1     ? sx(0) : (sx(i - 2) + sx(i - 1)) / 2;
-      const y0 = i === 1     ? sy(0) : (sy(i - 2) + sy(i - 1)) / 2;
-      const x2 = i === n - 1 ? sx(n - 1) : (sx(i - 1) + sx(i)) / 2;
-      const y2 = i === n - 1 ? sy(n - 1) : (sy(i - 1) + sy(i)) / 2;
+    if (dt > 0) peakMag *= Math.exp(-dt / PEAK_TAU);
 
-      ctx.beginPath();
-      ctx.moveTo(x0, y0);
-      ctx.quadraticCurveTo(sx(i - 1), sy(i - 1), x2, y2);
+    if (count >= 2) {
+      const stride = Math.ceil(count / MAX_RENDER_POINTS);
+      let m = 0;
+      for (let i = count - 1; i >= 0 && m < MAX_RENDER_POINTS; i -= stride) {
+        const k = idx(i);
+        const x = bufX[k], y = bufY[k];
+        const mag = Math.sqrt(x * x + y * y);
+        const r = radiusPx(mag);
+        ptX[m] = projectX(x, mag, r);
+        ptY[m] = projectY(y, mag, r);
+        m++;
+      }
+      // Collected newest-first; flip so index 0 is the oldest point.
+      for (let a = 0, b = m - 1; a < b; a++, b--) {
+        let t = ptX[a]; ptX[a] = ptX[b]; ptX[b] = t;
+        t = ptY[a]; ptY[a] = ptY[b]; ptY[b] = t;
+      }
 
-      const r = Math.round(t * 248 + (1 - t) * 60);
-      const g = Math.round(t * 80  + (1 - t) * 130);
-      const b = Math.round(t * 72  + (1 - t) * 250);
-      ctx.strokeStyle = `rgba(${r},${g},${b},${alpha.toFixed(2)})`;
-      ctx.lineWidth = (0.8 + t * 2.2) * dpr;
-      ctx.lineCap = 'round';
-      ctx.stroke();
+      if (m >= 2) drawTrail(m);
+      drawHead(ptX[m - 1], ptY[m - 1]);
     }
 
-    // Current dot
-    const head = history[history.length - 1];
-    const hx = optInvert ? cx - head.x * scale : cx + head.x * scale;
-    const hy = optInvert ? cy + head.y * scale : cy - head.y * scale;
+    const lvl = getLevel(peakMag);
+    ctx.font = '600 ' + (14 * dpr) + 'px -apple-system, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    ctx.fillStyle = lvl.color;
+    ctx.fillText(lvl.label.toUpperCase(), cx, 10 * dpr);
 
+    drawZBar(optInvert ? -lastZ : lastZ);
+  }
+
+  function drawTrail(m) {
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    const buckets = Math.min(TRAIL_BUCKETS, m - 1);
+
+    for (let b = 0; b < buckets; b++) {
+      const from = 1 + Math.floor(b * (m - 1) / buckets);
+      const to = Math.floor((b + 1) * (m - 1) / buckets);
+      if (to < from) continue;
+
+      ctx.beginPath();
+      for (let i = from; i <= to; i++) {
+        const x0 = i === 1 ? ptX[0] : (ptX[i - 2] + ptX[i - 1]) / 2;
+        const y0 = i === 1 ? ptY[0] : (ptY[i - 2] + ptY[i - 1]) / 2;
+        const x2 = i === m - 1 ? ptX[m - 1] : (ptX[i - 1] + ptX[i]) / 2;
+        const y2 = i === m - 1 ? ptY[m - 1] : (ptY[i - 1] + ptY[i]) / 2;
+        ctx.moveTo(x0, y0);
+        ctx.quadraticCurveTo(ptX[i - 1], ptY[i - 1], x2, y2);
+      }
+
+      const t = (b + 0.5) / buckets;
+      const r = Math.round(t * 250 + (1 - t) * 70);
+      const g = Math.round(t * 90  + (1 - t) * 150);
+      const bl = Math.round(t * 80 + (1 - t) * 255);
+      ctx.strokeStyle = 'rgba(' + r + ',' + g + ',' + bl + ',' + (Math.pow(t, 1.4) * 0.85 + 0.12).toFixed(2) + ')';
+      ctx.lineWidth = (0.9 + t * 2.3) * dpr;
+      ctx.stroke();
+    }
+  }
+
+  function drawHead(hx, hy) {
     ctx.beginPath();
     ctx.arc(hx, hy, 4.5 * dpr, 0, Math.PI * 2);
     ctx.fillStyle = '#fff';
@@ -294,206 +429,273 @@
     const pulse = (Date.now() % 1000) / 1000;
     ctx.beginPath();
     ctx.arc(hx, hy, (4.5 + pulse * 12) * dpr, 0, Math.PI * 2);
-    ctx.strokeStyle = `rgba(255,255,255,${(1 - pulse) * 0.35})`;
+    ctx.strokeStyle = 'rgba(255,255,255,' + ((1 - pulse) * 0.4).toFixed(2) + ')';
     ctx.lineWidth = 1.5 * dpr;
     ctx.stroke();
-
-    // Turbulence level badge (top center)
-    const lvl = getLevel(peakMag);
-    ctx.font = `600 ${13 * dpr}px -apple-system, sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'top';
-    ctx.fillStyle = lvl.color;
-    ctx.fillText(lvl.label.toUpperCase(), cx, 10 * dpr);
-
-    drawZBar(optInvert ? -head.z : head.z);
   }
 
-  function drawRings() {
-    // Rings at 0.1, 0.25, 0.5 G with labels
-    const rings = [
-      { r: 0.1,   label: '0.1G',  alpha: 0.15 },
-      { r: 0.25,  label: '0.25G', alpha: 0.12 },
-      { r: MAX_G, label: '0.5G',  alpha: 0.09 },
-    ];
-
-    // Crosshair axes
-    ctx.save();
-    ctx.strokeStyle = 'rgba(255,255,255,0.07)';
-    ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(cx, 0); ctx.lineTo(cx, canvas.height); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(0, cy); ctx.lineTo(canvas.width, cy); ctx.stroke();
-
-    ctx.font = `${9 * dpr}px -apple-system, sans-serif`;
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'middle';
-    ctx.fillStyle = 'rgba(255,255,255,0.15)';
-    ctx.fillText('+X', cx + 4, cy - 8 * dpr);
-    ctx.textAlign = 'center';
-    ctx.fillText('+Y', cx, 4 * dpr + 8 * dpr);
-
-    rings.forEach(({ r, label, alpha }) => {
-      const pr = r * scale;
-      ctx.beginPath();
-      ctx.arc(cx, cy, pr, 0, Math.PI * 2);
-      ctx.strokeStyle = `rgba(255,255,255,${alpha})`;
-      ctx.lineWidth = 1;
-      ctx.stroke();
-
-      // Label at the right edge of each ring
-      ctx.fillStyle = `rgba(255,255,255,${alpha * 1.8})`;
-      ctx.font = `${9 * dpr}px -apple-system, sans-serif`;
-      ctx.textAlign = 'left';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(label, cx + pr + 3 * dpr, cy);
-    });
-
-    ctx.restore();
+  function roundRect(c, x, y, w, h, r) {
+    if (c.roundRect) { c.beginPath(); c.roundRect(x, y, w, h, r); return; }
+    const rr = Math.min(r, w / 2, h / 2);
+    c.beginPath();
+    c.moveTo(x + rr, y);
+    c.arcTo(x + w, y, x + w, y + h, rr);
+    c.arcTo(x + w, y + h, x, y + h, rr);
+    c.arcTo(x, y + h, x, y, rr);
+    c.arcTo(x, y, x + w, y, rr);
+    c.closePath();
   }
 
   function drawZBar(z) {
-    // Vertical bar on the right edge: center = 0, up = positive Z, down = negative Z
     const barW = 10 * dpr;
     const barH = canvas.height * 0.6;
     const barX = canvas.width - barW - 4 * dpr;
     const barY = cy - barH / 2;
 
-    // Track background
-    ctx.save();
-    ctx.fillStyle = 'rgba(255,255,255,0.05)';
-    ctx.beginPath();
-    ctx.roundRect(barX, barY, barW, barH, 4 * dpr);
+    ctx.fillStyle = 'rgba(255,255,255,0.08)';
+    roundRect(ctx, barX, barY, barW, barH, 4 * dpr);
     ctx.fill();
 
-    // Fill from center outward
-    const clampedZ = Math.max(-MAX_G, Math.min(MAX_G, z || 0));
-    const fillH = Math.abs(clampedZ) / MAX_G * (barH / 2);
-    const fillY = clampedZ >= 0 ? cy - fillH : cy;
-    const zT = Math.abs(clampedZ) / MAX_G; // 0..1
-    const zR = Math.round(zT * 168 + (1 - zT) * 100);
-    const zG = Math.round(zT * 85  + (1 - zT) * 180);
-    const zB = Math.round(zT * 220 + (1 - zT) * 200);
-    ctx.fillStyle = `rgba(${zR},${zG},${zB},0.75)`;
-    ctx.beginPath();
-    ctx.roundRect(barX, fillY, barW, Math.max(fillH, 1), 3 * dpr);
+    const mag = Math.min(Math.abs(z || 0), MAX_G);
+    const zT = radiusPx(mag) / radius;
+    const fillH = Math.min(zT, 1) * (barH / 2);
+    const fillY = z >= 0 ? cy - fillH : cy;
+    const zR = Math.round(zT * 180 + (1 - zT) * 120);
+    const zG = Math.round(zT * 95  + (1 - zT) * 195);
+    const zB = Math.round(zT * 230 + (1 - zT) * 215);
+    ctx.fillStyle = 'rgba(' + zR + ',' + zG + ',' + zB + ',0.85)';
+    roundRect(ctx, barX, fillY, barW, Math.max(fillH, 1), 3 * dpr);
     ctx.fill();
 
-    // Center tick
-    ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+    ctx.strokeStyle = 'rgba(255,255,255,0.3)';
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(barX, cy);
     ctx.lineTo(barX + barW, cy);
     ctx.stroke();
 
-    // Label
-    ctx.fillStyle = 'rgba(255,255,255,0.2)';
-    ctx.font = `${9 * dpr}px -apple-system, sans-serif`;
+    ctx.fillStyle = 'rgba(255,255,255,0.45)';
+    ctx.font = (10 * dpr) + 'px -apple-system, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'bottom';
-    ctx.fillText('Z', barX + barW / 2, barY - 2 * dpr);
+    ctx.fillText('Z', barX + barW / 2, barY - 3 * dpr);
+  }
 
-    ctx.restore();
+  function fmt(v) {
+    return (v >= 0 ? '+' : '') + v.toFixed(3) + 'G';
   }
 
   function onMotion(e) {
+    if (sensorTimer) { clearTimeout(sensorTimer); sensorTimer = null; }
     if (paused) return;
 
+    const now = performance.now();
+    const dt = lastSample ? Math.min((now - lastSample) / 1000, 0.25) : 1 / 60;
+    lastSample = now;
+
+    let ax, ay, az, dirtyStatus = false;
     const acc = e.acceleration;
-    if (!acc) return;
+    if (acc && (acc.x !== null || acc.y !== null || acc.z !== null)) {
+      ax = (acc.x || 0) / G;
+      ay = (acc.y || 0) / G;
+      az = (acc.z || 0) / G;
+      if (fallback) { fallback = false; dirtyStatus = true; }
+    } else {
+      const raw = e.accelerationIncludingGravity;
+      if (!raw || (raw.x === null && raw.y === null && raw.z === null)) {
+        if (++nullSamples === 20 && !sensorDead) { sensorDead = true; liveStatus(); }
+        return;
+      }
+      // Gravity-included fallback: subtract a slow-moving estimate of gravity.
+      const gx = (raw.x || 0) / G, gy = (raw.y || 0) / G, gz = (raw.z || 0) / G;
+      if (!gravInit) { gravX = gx; gravY = gy; gravZ = gz; gravInit = true; }
+      const ga = 1 - Math.exp(-dt / GRAVITY_TAU);
+      gravX += (gx - gravX) * ga;
+      gravY += (gy - gravY) * ga;
+      gravZ += (gz - gravZ) * ga;
+      ax = gx - gravX;
+      ay = gy - gravY;
+      az = gz - gravZ;
+      if (!fallback) { fallback = true; dirtyStatus = true; }
+    }
+    nullSamples = 0;
+    if (sensorDead) { sensorDead = false; dirtyStatus = true; }
+    if (stalled) { stalled = false; dirtyStatus = true; }
+    if (dirtyStatus) liveStatus();
 
-    const ax = (acc.x || 0) / G;
-    const ay = (acc.y || 0) / G;
-    const az = (acc.z || 0) / G;
-
-    // Always update EMA (values in G)
-    curX += (ax - curX) * SMOOTH;
-    curY += (ay - curY) * SMOOTH;
-    curZ += (az - curZ) * SMOOTH;
+    const a = 1 - Math.exp(-dt / SMOOTH_TAU);
+    curX += (ax - curX) * a;
+    curY += (ay - curY) * a;
+    curZ += (az - curZ) * a;
 
     const px = optSmooth ? curX : ax;
     const py = optSmooth ? curY : ay;
-    const pz = optSmooth ? curZ : az;
+    lastZ = optSmooth ? curZ : az;
 
-    // Track peak magnitude for level badge
     const mag = Math.sqrt(px * px + py * py);
     if (mag > peakMag) peakMag = mag;
 
-    history.push({ x: px, y: py, z: pz });
-    if (history.length > MAX_HISTORY) history.shift();
+    push(px, py, now);
 
-    numX.textContent = fmt(curX);
-    numY.textContent = fmt(curY);
-    numZ.textContent = fmt(curZ);
+    if (optRaw && now - lastReadout >= READOUT_MS) {
+      lastReadout = now;
+      numX.textContent = fmt(curX);
+      numY.textContent = fmt(curY);
+      numZ.textContent = fmt(curZ);
+    }
+  }
+
+  function loop(ts) {
+    animId = requestAnimationFrame(loop);
+    const elapsed = ts - lastFrame;
+    if (elapsed < FRAME_MS) return;
+    lastFrame = ts;
+    draw(Math.min(elapsed / 1000, 0.25));
+    if (!stalled && !sensorDead && lastSample && ts - lastSample > STALL_MS) {
+      stalled = true;
+      liveStatus();
+    }
+  }
+
+  function startLoop() {
+    if (animId !== null) return;
+    lastFrame = performance.now();
+    animId = requestAnimationFrame(loop);
+  }
+
+  function stopLoop() {
+    if (animId === null) return;
+    cancelAnimationFrame(animId);
+    animId = null;
   }
 
   function startTracking() {
+    if (listening) return;
     window.addEventListener('devicemotion', onMotion);
-    statusEl.textContent = 'Live';
-    statusEl.classList.add('active');
-    controls.classList.add('visible');
+    listening = true;
     started = true;
-    loop();
+    controls.classList.add('visible');
+    liveStatus();
+    renderBackground();
+    startLoop();
+    sensorTimer = setTimeout(() => {
+      sensorTimer = null;
+      sensorDead = true;
+      liveStatus();
+    }, SENSOR_TIMEOUT_MS);
   }
 
   function requestPermission() {
-    if (typeof DeviceMotionEvent !== 'undefined' &&
-        typeof DeviceMotionEvent.requestPermission === 'function') {
+    if (typeof DeviceMotionEvent === 'undefined') {
+      setStatus('No motion sensor', 'err');
+      return;
+    }
+    if (typeof DeviceMotionEvent.requestPermission === 'function') {
       DeviceMotionEvent.requestPermission()
         .then(state => {
           if (state === 'granted') {
             startBtn.style.display = 'none';
             startTracking();
           } else {
-            statusEl.textContent = 'Permission denied';
+            setStatus('Permission denied', 'err');
           }
         })
-        .catch(err => {
-          statusEl.textContent = 'Error: ' + err.message;
-        });
+        .catch(err => setStatus('Error: ' + err.message, 'err'));
     } else {
       startBtn.style.display = 'none';
       startTracking();
     }
   }
 
-  let animId;
-  function loop() {
-    draw();
-    animId = requestAnimationFrame(loop);
+  function releaseWakeLock() {
+    if (!wakeLock) return;
+    const lock = wakeLock;
+    wakeLock = null;
+    lock.release().catch(() => {});
+  }
+
+  function acquireWakeLock() {
+    if (!('wakeLock' in navigator) || wakeLock || hidden) return;
+    navigator.wakeLock.request('screen')
+      .then(lock => {
+        if (!optWake) { lock.release().catch(() => {}); return; }
+        wakeLock = lock;
+        lock.addEventListener('release', () => { wakeLock = null; });
+      })
+      .catch(() => {
+        optWake = false;
+        btnWake.classList.remove('on');
+        flash('Wake lock refused', 'warn');
+      });
+  }
+
+  function redrawIfIdle() {
+    if (started && animId === null && !hidden) draw(0);
   }
 
   btnClear.addEventListener('click', () => {
-    history.length = 0;
+    head = 0;
+    count = 0;
     peakMag = 0;
+    redrawIfIdle();
   });
 
-  function makeToggle(btn, getter, setter) {
+  function makeToggle(btn, get, set) {
     btn.addEventListener('click', () => {
-      setter(!getter());
-      btn.classList.toggle('on', getter());
+      set(!get());
+      btn.classList.toggle('on', get());
+      redrawIfIdle();
     });
   }
   makeToggle(btnSmooth, () => optSmooth, v => { optSmooth = v; });
   makeToggle(btnInvert, () => optInvert, v => { optInvert = v; });
-  const readout = document.getElementById('readout');
-  readout.style.display = 'none';
-  btnRaw.addEventListener('click', () => {
-    optRaw = !optRaw;
-    btnRaw.classList.toggle('on', optRaw);
-    readout.style.display = optRaw ? '' : 'none';
+  makeToggle(btnCurve, () => optCurve, v => { optCurve = v; renderBackground(); });
+  makeToggle(btnRaw, () => optRaw, v => {
+    optRaw = v;
+    readout.classList.toggle('hidden', !optRaw);
+    resizeCanvas();
+  });
+  makeToggle(btnWake, () => optWake, v => {
+    optWake = v;
+    if (optWake) acquireWakeLock();
+    else releaseWakeLock();
   });
 
   btnPause.addEventListener('click', () => {
     paused = !paused;
     btnPause.textContent = paused ? 'Resume' : 'Pause';
-    statusEl.textContent = paused ? 'Paused' : 'Live';
-    if (paused) statusEl.classList.remove('active');
-    else statusEl.classList.add('active');
+    if (paused) {
+      lastSample = 0;
+      stopLoop();
+      draw(0);
+    } else {
+      startLoop();
+    }
+    liveStatus();
   });
 
+  if (!('wakeLock' in navigator)) btnWake.disabled = true;
+
+  document.addEventListener('visibilitychange', () => {
+    hidden = document.hidden;
+    if (hidden) {
+      stopLoop();
+      releaseWakeLock();
+    } else {
+      lastSample = 0;
+      if (started && !paused) startLoop();
+      if (optWake) acquireWakeLock();
+    }
+  });
+
+  function onResize() {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(resizeCanvas, 120);
+  }
+  window.addEventListener('resize', onResize);
+  window.addEventListener('orientationchange', onResize);
+
   startBtn.addEventListener('click', requestPermission);
-  window.addEventListener('resize', resizeCanvas);
   resizeCanvas();
 })();
 </script>
