@@ -169,7 +169,7 @@
 <div id="canvas-wrap">
   <canvas id="canvas"></canvas>
   <button id="start-btn">Enable Motion</button>
-  <span id="version">v1.24 2026-09-18</span>
+  <span id="version">v1.25 2026-09-18</span>
   <div id="controls">
     <div class="ctrl-row">
       <button class="ctrl-btn" id="btn-clear">Clear Trail</button>
@@ -274,6 +274,7 @@
   let peakMag = 0, lastZ = 0;
   let lastSample = 0, lastReadout = 0, lastFrame = 0;
   let animId = null, resizeTimer = null, sensorTimer = null;
+  let screenAngle = 0, rotC = 1, rotS = 0;
   let listening = false, fallback = false, nullSamples = 0;
   let sensorDead = false, stalled = false;
   let flashTimer = null;
@@ -312,6 +313,37 @@
 
   function idx(i) {
     return (head - count + i + CAP) % CAP;
+  }
+
+  function currentScreenAngle() {
+    const so = window.screen && screen.orientation;
+    if (so && typeof so.angle === 'number') return (so.angle % 360 + 360) % 360;
+    if (typeof window.orientation === 'number') return (window.orientation % 360 + 360) % 360;
+    return 0;
+  }
+
+  // The motion axes are fixed to the hardware and ignore screen rotation, so
+  // everything already banked is re-expressed in the new screen frame rather
+  // than left pointing the old way.
+  function applyScreenAngle() {
+    const next = currentScreenAngle();
+    if (next === screenAngle) return;
+    const rad = ((next - screenAngle) % 360 + 360) % 360 * Math.PI / 180;
+    const c = Math.cos(rad), s = Math.sin(rad);
+    for (let i = 0; i < count; i++) {
+      const k = idx(i);
+      const x = bufX[k], y = bufY[k];
+      bufX[k] = x * c + y * s;
+      bufY[k] = -x * s + y * c;
+    }
+    const nx = curX * c + curY * s;
+    curY = -curX * s + curY * c;
+    curX = nx;
+    screenAngle = next;
+    const r = screenAngle * Math.PI / 180;
+    rotC = Math.cos(r);
+    rotS = Math.sin(r);
+    redrawIfIdle();
   }
 
   function radiusPx(magG) {
@@ -561,6 +593,12 @@
       az = gz - gravZ;
       if (!fallback) { fallback = true; dirtyStatus = true; }
     }
+    if (rotS !== 0 || rotC !== 1) {
+      const rx = ax * rotC + ay * rotS;
+      ay = -ax * rotS + ay * rotC;
+      ax = rx;
+    }
+
     nullSamples = 0;
     if (sensorDead) { sensorDead = false; dirtyStatus = true; }
     if (stalled) { stalled = false; dirtyStatus = true; }
@@ -751,11 +789,15 @@
   });
 
   function onResize() {
+    applyScreenAngle();
     clearTimeout(resizeTimer);
     resizeTimer = setTimeout(resizeCanvas, 120);
   }
   window.addEventListener('resize', onResize);
   window.addEventListener('orientationchange', onResize);
+  if (window.screen && screen.orientation && screen.orientation.addEventListener) {
+    screen.orientation.addEventListener('change', applyScreenAngle);
+  }
 
   const localVersion = (versionEl.textContent.match(/v[\d.]+/) || [])[0];
 
@@ -791,6 +833,7 @@
   }
 
   startBtn.addEventListener('click', requestPermission);
+  applyScreenAngle();
   resizeCanvas();
   checkForUpdate();
 })();

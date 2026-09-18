@@ -23,6 +23,15 @@ and the trail is the last 15 seconds of that, fading blue (old) to red (current)
 A calm cruise looks like a small scribble near the middle. Chop stretches it into a
 fuzzy star. A single hard jolt throws a red streak toward one edge.
 
+## Orientation
+
+The motion sensor reports in the device's own frame, which does not turn when
+the screen does — so in landscape the plot would otherwise sit 90° off. X and Y
+are rotated into the screen frame on every sample, and the stored trail is
+rotated with them, so turning the phone or tablet mid-ride keeps past bumps
+pointing the way they actually happened. Z is normal to the screen either way
+and is left alone.
+
 ## Staying current
 
 The page checks itself for a newer version on every load and reloads under a
