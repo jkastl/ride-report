@@ -112,22 +112,24 @@
     right: 8px;
     left: 8px;
     display: flex;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-    gap: 6px;
+    gap: 4px;
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.3s;
   }
   #controls.visible { opacity: 1; pointer-events: auto; }
   .ctrl-btn {
+    flex: 1 1 0;
+    min-width: 0;
     background: rgba(255,255,255,0.10);
     color: #e2e6f8;
     border: 1px solid rgba(255,255,255,0.20);
     border-radius: 8px;
-    padding: 6px 11px;
-    font-size: 12px;
+    padding: 7px 2px;
+    font-size: clamp(9.5px, 2.9vw, 11px);
     font-family: inherit;
+    white-space: nowrap;
+    overflow: hidden;
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
   }
@@ -150,15 +152,14 @@
 <div id="canvas-wrap">
   <canvas id="canvas"></canvas>
   <button id="start-btn">Enable Motion</button>
-  <span id="version">v1.13 2026-09-18</span>
+  <span id="version">v1.14 2026-09-18</span>
   <div id="controls">
     <button class="ctrl-btn" id="btn-clear">Clear</button>
     <button class="ctrl-btn" id="btn-pause">Pause</button>
     <button class="ctrl-btn on" id="btn-smooth">Smooth</button>
     <button class="ctrl-btn on" id="btn-invert">Invert</button>
-    <button class="ctrl-btn on" id="btn-floor">Floor</button>
     <button class="ctrl-btn" id="btn-wake">Awake</button>
-    <button class="ctrl-btn" id="btn-raw">Raw #s</button>
+    <button class="ctrl-btn" id="btn-raw">Raw</button>
   </div>
 </div>
 
@@ -194,7 +195,6 @@
   const btnPause  = document.getElementById('btn-pause');
   const btnSmooth = document.getElementById('btn-smooth');
   const btnInvert = document.getElementById('btn-invert');
-  const btnFloor  = document.getElementById('btn-floor');
   const btnWake   = document.getElementById('btn-wake');
   const btnRaw    = document.getElementById('btn-raw');
 
@@ -233,7 +233,7 @@
   const bgCtx = bg.getContext('2d', { alpha: false });
 
   let started = false, paused = false, hidden = false;
-  let optSmooth = true, optInvert = true, optFloor = true, optRaw = false, optWake = false;
+  let optSmooth = true, optInvert = true, optRaw = false, optWake = false;
   let cx = 0, cy = 0, radius = 1, dpr = 1;
   let curX = 0, curY = 0, curZ = 0;
   let gravX = 0, gravY = 0, gravZ = 0, gravInit = false;
@@ -364,21 +364,23 @@
     if (dt > 0) peakMag *= Math.exp(-dt / PEAK_TAU);
 
     if (count >= 2) {
-      const stride = Math.ceil(count / MAX_RENDER_POINTS);
-      let m = 0;
-      for (let i = count - 1; i >= 0 && m < MAX_RENDER_POINTS; i -= stride) {
-        const k = idx(i);
-        const x = bufX[k], y = bufY[k];
+      // Every sample contributes: each output point is the mean of its slice
+      // of the buffer, so discarded samples cannot alias into the trail.
+      const m = Math.min(count, MAX_RENDER_POINTS);
+      for (let j = 0; j < m; j++) {
+        const lo = Math.floor(j * count / m);
+        const hi = Math.max(Math.floor((j + 1) * count / m), lo + 1);
+        let sumX = 0, sumY = 0;
+        for (let i = lo; i < hi; i++) {
+          const k = idx(i);
+          sumX += bufX[k];
+          sumY += bufY[k];
+        }
+        const x = sumX / (hi - lo), y = sumY / (hi - lo);
         const mag = Math.sqrt(x * x + y * y);
         const r = radiusPx(mag);
-        ptX[m] = projectX(x, mag, r);
-        ptY[m] = projectY(y, mag, r);
-        m++;
-      }
-      // Collected newest-first; flip so index 0 is the oldest point.
-      for (let a = 0, b = m - 1; a < b; a++, b--) {
-        let t = ptX[a]; ptX[a] = ptX[b]; ptX[b] = t;
-        t = ptY[a]; ptY[a] = ptY[b]; ptY[b] = t;
+        ptX[j] = projectX(x, mag, r);
+        ptY[j] = projectY(y, mag, r);
       }
 
       if (m >= 2) drawTrail(m);
@@ -537,13 +539,10 @@
     let py = optSmooth ? curY : ay;
     let pz = optSmooth ? curZ : az;
 
-    if (optFloor) {
-      const m = Math.sqrt(px * px + py * py);
-      if (m <= FLOOR_G) { px = 0; py = 0; }
-      else { const k = (m - FLOOR_G) / m; px *= k; py *= k; }
-      pz = floorScalar(pz);
-    }
-    lastZ = pz;
+    const m = Math.sqrt(px * px + py * py);
+    if (m <= FLOOR_G) { px = 0; py = 0; }
+    else { const k = (m - FLOOR_G) / m; px *= k; py *= k; }
+    lastZ = floorScalar(pz);
 
     const mag = Math.sqrt(px * px + py * py);
     if (mag > peakMag) peakMag = mag;
@@ -662,7 +661,6 @@
   }
   makeToggle(btnSmooth, () => optSmooth, v => { optSmooth = v; });
   makeToggle(btnInvert, () => optInvert, v => { optInvert = v; });
-  makeToggle(btnFloor, () => optFloor, v => { optFloor = v; });
   makeToggle(btnRaw, () => optRaw, v => {
     optRaw = v;
     readout.classList.toggle('hidden', !optRaw);
