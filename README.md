@@ -23,6 +23,12 @@ and the trail is the last 15 seconds of that, fading blue (old) to red (current)
 A calm cruise looks like a small scribble near the middle. Chop stretches it into a
 fuzzy star. A single hard jolt throws a red streak toward one edge.
 
+## Staying current
+
+The page checks itself for a newer version on every load and reloads under a
+fresh URL if it finds one, so a cached copy heals itself. Mid-ride the version
+label turns yellow and offers a tap instead, rather than wiping the trail.
+
 ## Controls
 
 | Button | What it does |

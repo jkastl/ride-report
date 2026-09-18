@@ -52,6 +52,11 @@
     pointer-events: none;
     font-variant-numeric: tabular-nums;
   }
+  #version.stale {
+    color: #ffe066;
+    pointer-events: auto;
+    cursor: pointer;
+  }
   #canvas-wrap {
     flex: 1;
     position: relative;
@@ -164,7 +169,7 @@
 <div id="canvas-wrap">
   <canvas id="canvas"></canvas>
   <button id="start-btn">Enable Motion</button>
-  <span id="version">v1.22 2026-09-18</span>
+  <span id="version">v1.23 2026-09-18</span>
   <div id="controls">
     <div class="ctrl-row">
       <button class="ctrl-btn" id="btn-clear">Clear Trail</button>
@@ -202,6 +207,7 @@
   const canvas = document.getElementById('canvas');
   const ctx = canvas.getContext('2d', { alpha: false });
   const statusEl = document.getElementById('status');
+  const versionEl = document.getElementById('version');
   const startBtn = document.getElementById('start-btn');
   const controls = document.getElementById('controls');
   const readout = document.getElementById('readout');
@@ -751,8 +757,42 @@
   window.addEventListener('resize', onResize);
   window.addEventListener('orientationchange', onResize);
 
+  const localVersion = (versionEl.textContent.match(/v[\d.]+/) || [])[0];
+
+  function storedReload() {
+    try { return sessionStorage.getItem('rr-reloaded'); } catch (e) { return null; }
+  }
+
+  function reloadFresh(remote) {
+    try { sessionStorage.setItem('rr-reloaded', remote); } catch (e) {}
+    location.replace(location.pathname + '?v=' + remote.replace(/^v/, ''));
+  }
+
+  function offerUpdate(remote) {
+    versionEl.textContent = localVersion + ' \u2192 ' + remote + '  tap to update';
+    versionEl.classList.add('stale');
+    versionEl.addEventListener('click', () => reloadFresh(remote), { once: true });
+  }
+
+  // The stale copy is already parsed by the time this runs, so the only way
+  // out is to re-request under a URL the cache has never seen.
+  function checkForUpdate() {
+    if (!localVersion || location.protocol === 'file:') return;
+    fetch(location.pathname + '?cb=' + Date.now(), { cache: 'no-store' })
+      .then(r => r.ok ? r.text() : Promise.reject())
+      .then(text => {
+        const el = new DOMParser().parseFromString(text, 'text/html').getElementById('version');
+        const remote = el && (el.textContent.match(/v[\d.]+/) || [])[0];
+        if (!remote || remote === localVersion) return;
+        if (started || storedReload() === remote) offerUpdate(remote);
+        else reloadFresh(remote);
+      })
+      .catch(() => {});
+  }
+
   startBtn.addEventListener('click', requestPermission);
   resizeCanvas();
+  checkForUpdate();
 })();
 </script>
 </body>
