@@ -164,7 +164,7 @@
 <div id="canvas-wrap">
   <canvas id="canvas"></canvas>
   <button id="start-btn">Enable Motion</button>
-  <span id="version">v1.30 2026-09-18</span>
+  <span id="version">v1.31 2026-09-18</span>
   <div id="controls">
     <div class="ctrl-row">
       <button class="ctrl-btn" id="btn-clear">Clear Trail</button>
@@ -784,12 +784,10 @@
     }
   });
 
-  // iOS fires orientationchange before the viewport reflows, so the angle is
-  // resolved again once the new dimensions are readable.
   function onResize() {
     applyScreenAngle();
     clearTimeout(resizeTimer);
-    resizeTimer = setTimeout(() => { applyScreenAngle(); resizeCanvas(); }, 120);
+    resizeTimer = setTimeout(resizeCanvas, 120);
   }
   window.addEventListener('resize', onResize);
   window.addEventListener('orientationchange', onResize);
