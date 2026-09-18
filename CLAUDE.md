@@ -1,6 +1,7 @@
 # turbulence
 
-Single-file mobile device motion tracker for iOS Safari and Android Chrome.
+"Ride Report" — single-file mobile ride-quality meter for iOS Safari and Android Chrome.
+The repo name stays `turbulence`; the app's display name is Ride Report.
 
 ## Overview
 

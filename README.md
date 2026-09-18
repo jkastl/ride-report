@@ -1,7 +1,9 @@
-# turbulence
+# Ride Report
 
-A single-page turbulence tracker for your phone. Lay it flat on a tray table and it
+A single-page ride-quality meter for your phone. Lay it flat on a tray table and it
 draws what the aircraft is doing to you, live.
+
+(The repo is still named `turbulence` — the Pages URL below depends on it.)
 
 **[jkastl.github.io/turbulence](https://jkastl.github.io/turbulence/)**
 
