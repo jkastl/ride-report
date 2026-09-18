@@ -18,10 +18,10 @@ Hosted on GitHub Pages from the `main` branch root.
   - Z axis: vertical (bar on the right edge, plus the readout)
 - Falls back to `accelerationIncludingGravity` with a gravity high-pass when `acceleration` is unavailable
 - Draws a color-gradient trail (blue=old → red=current) with a pulsing dot at the head
-- Live numeric readout at the bottom (`Readout`)
+- Live numeric readout at the bottom (`Raw Data`)
 - Soft noise floor: magnitudes below 0.01G shrink to zero
 - Clear Trail, Pause, Keep Awake (screen wake lock), 🔋 Saver, Smoothing,
-  Invert Axes and Readout controls, two rows
+  Invert Axes and Raw Data controls, two rows
 - 🔋 Saver toggles the render tier: off (default) is 60fps / DPR 3 / 480 trail points
   / 20Hz readout, on is 30fps / DPR 2 / 360 points / 10Hz readout
 
