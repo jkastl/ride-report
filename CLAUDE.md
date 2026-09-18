@@ -19,7 +19,8 @@ Hosted on GitHub Pages from the `main` branch root.
 - Falls back to `accelerationIncludingGravity` with a gravity high-pass when `acceleration` is unavailable
 - Draws a color-gradient trail (blue=old → red=current) with a pulsing dot at the head
 - Live numeric readout at the bottom (`Raw #s`)
-- Clear, Pause, Smooth, Invert, Awake (screen wake lock) and Raw #s controls
+- Soft noise floor (`Floor`) that shrinks magnitudes below 0.01G to zero
+- Clear, Pause, Smooth, Invert, Floor, Awake (screen wake lock) and Raw #s controls
 
 ## Development
 

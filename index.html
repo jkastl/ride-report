@@ -150,12 +150,13 @@
 <div id="canvas-wrap">
   <canvas id="canvas"></canvas>
   <button id="start-btn">Enable Motion</button>
-  <span id="version">v1.12 2026-09-18</span>
+  <span id="version">v1.13 2026-09-18</span>
   <div id="controls">
     <button class="ctrl-btn" id="btn-clear">Clear</button>
     <button class="ctrl-btn" id="btn-pause">Pause</button>
     <button class="ctrl-btn on" id="btn-smooth">Smooth</button>
     <button class="ctrl-btn on" id="btn-invert">Invert</button>
+    <button class="ctrl-btn on" id="btn-floor">Floor</button>
     <button class="ctrl-btn" id="btn-wake">Awake</button>
     <button class="ctrl-btn" id="btn-raw">Raw #s</button>
   </div>
@@ -193,11 +194,13 @@
   const btnPause  = document.getElementById('btn-pause');
   const btnSmooth = document.getElementById('btn-smooth');
   const btnInvert = document.getElementById('btn-invert');
+  const btnFloor  = document.getElementById('btn-floor');
   const btnWake   = document.getElementById('btn-wake');
   const btnRaw    = document.getElementById('btn-raw');
 
   const G = 9.81;
   const MAX_G = 0.5;
+  const FLOOR_G = 0.01;
   const HISTORY_MS = 15000;
   const CAP = 2400;
   const MAX_RENDER_POINTS = 360;
@@ -230,7 +233,7 @@
   const bgCtx = bg.getContext('2d', { alpha: false });
 
   let started = false, paused = false, hidden = false;
-  let optSmooth = true, optInvert = true, optRaw = false, optWake = false;
+  let optSmooth = true, optInvert = true, optFloor = true, optRaw = false, optWake = false;
   let cx = 0, cy = 0, radius = 1, dpr = 1;
   let curX = 0, curY = 0, curZ = 0;
   let gravX = 0, gravY = 0, gravZ = 0, gravInit = false;
@@ -279,6 +282,13 @@
 
   function radiusPx(magG) {
     return magG > 0 ? magG / MAX_G * radius : 0;
+  }
+
+  // Soft threshold: shrink toward zero by FLOOR_G rather than clamping to it,
+  // so the dot never snaps as a bump crosses the floor.
+  function floorScalar(v) {
+    const a = Math.abs(v);
+    return a <= FLOOR_G ? 0 : (a - FLOOR_G) * (v < 0 ? -1 : 1);
   }
 
   function projectX(x, mag, r) {
@@ -523,9 +533,17 @@
     curY += (ay - curY) * a;
     curZ += (az - curZ) * a;
 
-    const px = optSmooth ? curX : ax;
-    const py = optSmooth ? curY : ay;
-    lastZ = optSmooth ? curZ : az;
+    let px = optSmooth ? curX : ax;
+    let py = optSmooth ? curY : ay;
+    let pz = optSmooth ? curZ : az;
+
+    if (optFloor) {
+      const m = Math.sqrt(px * px + py * py);
+      if (m <= FLOOR_G) { px = 0; py = 0; }
+      else { const k = (m - FLOOR_G) / m; px *= k; py *= k; }
+      pz = floorScalar(pz);
+    }
+    lastZ = pz;
 
     const mag = Math.sqrt(px * px + py * py);
     if (mag > peakMag) peakMag = mag;
@@ -644,6 +662,7 @@
   }
   makeToggle(btnSmooth, () => optSmooth, v => { optSmooth = v; });
   makeToggle(btnInvert, () => optInvert, v => { optInvert = v; });
+  makeToggle(btnFloor, () => optFloor, v => { optFloor = v; });
   makeToggle(btnRaw, () => optRaw, v => {
     optRaw = v;
     readout.classList.toggle('hidden', !optRaw);
