@@ -21,6 +21,8 @@ Hosted on GitHub Pages from the `main` branch root.
 - Live numeric readout at the bottom (`Raw Data`), showing the same values the
   trail is drawn from, so it follows `Smoothing` and the noise floor
 - Soft noise floor: magnitudes below 0.01G shrink to zero
+- Z is negated on the way in: iOS reports motion negated against the spec, and
+  the screen rotation absorbs that 180 for X/Y but leaves Z upside down
 - Motion axes are fixed to the hardware, so X/Y are rotated into the screen
   frame; the buffered trail is rotated too, so history survives a turn
 - The angle comes from `window.orientation`, then `screen.orientation.angle`.

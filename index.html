@@ -164,7 +164,7 @@
 <div id="canvas-wrap">
   <canvas id="canvas"></canvas>
   <button id="start-btn">Enable Motion</button>
-  <span id="version">v1.31 2026-09-18</span>
+  <span id="version">v1.32 2026-09-18</span>
   <div id="controls">
     <div class="ctrl-row">
       <button class="ctrl-btn" id="btn-clear">Clear Trail</button>
@@ -594,6 +594,11 @@
       ay = -ax * rotS + ay * rotC;
       ax = rx;
     }
+
+    // iOS reports motion negated against the spec. X and Y hide it — the screen
+    // rotation absorbs the 180 — but Z has nothing to hide behind and came out
+    // upside down against the other two.
+    az = -az;
 
     nullSamples = 0;
     if (sensorDead) { sensorDead = false; dirtyStatus = true; }
