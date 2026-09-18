@@ -20,9 +20,9 @@ Hosted on GitHub Pages from the `main` branch root.
 - Draws a color-gradient trail (blue=old → red=current) with a pulsing dot at the head
 - Live numeric readout at the bottom (`Readout`)
 - Soft noise floor: magnitudes below 0.01G shrink to zero
-- Clear Trail, Pause, Keep Awake (screen wake lock), ⚡️ Saver, Smoothing,
+- Clear Trail, Pause, Keep Awake (screen wake lock), 🔋 Saver, Smoothing,
   Invert Axes and Readout controls, two rows
-- ⚡️ Saver toggles the render tier: off (default) is 60fps / DPR 3 / 480 trail points
+- 🔋 Saver toggles the render tier: off (default) is 60fps / DPR 3 / 480 trail points
   / 20Hz readout, on is 30fps / DPR 2 / 360 points / 10Hz readout
 
 ## Development
