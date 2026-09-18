@@ -39,7 +39,7 @@ label turns yellow and offers a tap instead, rather than wiping the trail.
 | **Invert Axes** | Plot the direction you're thrown rather than the direction the aircraft accelerates |
 | **Keep Awake** | Hold a screen wake lock so the phone doesn't sleep mid-flight. Off by default |
 | **🔋 Saver** | Halve the render cost for long unplugged rides. Off by default |
-| **Raw Data** | Show the live numeric X/Y/Z readout along the bottom |
+| **Raw Data** | Show the live numeric X/Y/Z readout along the bottom. Prints the same values the trail is drawn from, so it follows `Smoothing` |
 
 ### Render tiers
 

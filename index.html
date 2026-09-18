@@ -169,7 +169,7 @@
 <div id="canvas-wrap">
   <canvas id="canvas"></canvas>
   <button id="start-btn">Enable Motion</button>
-  <span id="version">v1.23 2026-09-18</span>
+  <span id="version">v1.24 2026-09-18</span>
   <div id="controls">
     <div class="ctrl-row">
       <button class="ctrl-btn" id="btn-clear">Clear Trail</button>
@@ -587,9 +587,9 @@
 
     if (optRaw && now - lastReadout >= readoutMs) {
       lastReadout = now;
-      numX.textContent = fmt(curX);
-      numY.textContent = fmt(curY);
-      numZ.textContent = fmt(curZ);
+      numX.textContent = fmt(px);
+      numY.textContent = fmt(py);
+      numZ.textContent = fmt(lastZ);
     }
   }
 

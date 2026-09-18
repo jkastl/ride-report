@@ -18,7 +18,8 @@ Hosted on GitHub Pages from the `main` branch root.
   - Z axis: vertical (bar on the right edge, plus the readout)
 - Falls back to `accelerationIncludingGravity` with a gravity high-pass when `acceleration` is unavailable
 - Draws a color-gradient trail (blue=old → red=current) with a pulsing dot at the head
-- Live numeric readout at the bottom (`Raw Data`)
+- Live numeric readout at the bottom (`Raw Data`), showing the same values the
+  trail is drawn from, so it follows `Smoothing` and the noise floor
 - Soft noise floor: magnitudes below 0.01G shrink to zero
 - Clear Trail, Pause, Keep Awake (screen wake lock), 🔋 Saver, Smoothing,
   Invert Axes and Raw Data controls, two rows
