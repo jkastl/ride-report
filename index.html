@@ -169,7 +169,7 @@
 <div id="canvas-wrap">
   <canvas id="canvas"></canvas>
   <button id="start-btn">Enable Motion</button>
-  <span id="version">v1.25 2026-09-18</span>
+  <span id="version">v1.26 2026-09-18</span>
   <div id="controls">
     <div class="ctrl-row">
       <button class="ctrl-btn" id="btn-clear">Clear Trail</button>
@@ -231,6 +231,8 @@
   const GRAVITY_TAU = 1.0;
   const PEAK_TAU = 3.3;
   const SENSOR_TIMEOUT_MS = 2500;
+  const UPDATE_EVERY_MS = 300000;
+  const UPDATE_GAP_MS = 60000;
   const STALL_MS = 3000;
 
   const TIERS = {
@@ -785,6 +787,7 @@
       lastSample = 0;
       if (started && !paused) startLoop();
       if (optWake) acquireWakeLock();
+      checkForUpdate();
     }
   });
 
@@ -800,6 +803,7 @@
   }
 
   const localVersion = (versionEl.textContent.match(/v[\d.]+/) || [])[0];
+  let lastUpdateCheck = 0, updateOffered = false;
 
   function storedReload() {
     try { return sessionStorage.getItem('rr-reloaded'); } catch (e) { return null; }
@@ -811,15 +815,22 @@
   }
 
   function offerUpdate(remote) {
+    if (updateOffered) return;
+    updateOffered = true;
     versionEl.textContent = localVersion + ' \u2192 ' + remote + '  tap to update';
     versionEl.classList.add('stale');
     versionEl.addEventListener('click', () => reloadFresh(remote), { once: true });
   }
 
   // The stale copy is already parsed by the time this runs, so the only way
-  // out is to re-request under a URL the cache has never seen.
+  // out is to re-request under a URL the cache has never seen. A tab left open
+  // is the case that needs this most, so it re-checks rather than only at load.
   function checkForUpdate() {
     if (!localVersion || location.protocol === 'file:') return;
+    if (document.hidden || updateOffered) return;
+    const now = Date.now();
+    if (now - lastUpdateCheck < UPDATE_GAP_MS) return;
+    lastUpdateCheck = now;
     fetch(location.pathname + '?cb=' + Date.now(), { cache: 'no-store' })
       .then(r => r.ok ? r.text() : Promise.reject())
       .then(text => {
@@ -836,6 +847,7 @@
   applyScreenAngle();
   resizeCanvas();
   checkForUpdate();
+  setInterval(checkForUpdate, UPDATE_EVERY_MS);
 })();
 </script>
 </body>

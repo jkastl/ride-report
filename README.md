@@ -34,9 +34,11 @@ and is left alone.
 
 ## Staying current
 
-The page checks itself for a newer version on every load and reloads under a
-fresh URL if it finds one, so a cached copy heals itself. Mid-ride the version
-label turns yellow and offers a tap instead, rather than wiping the trail.
+The page checks itself for a newer version on load, whenever the tab is
+refocused, and every 5 minutes while open, then reloads under a fresh URL if it
+finds one — so a cached copy heals itself, and a tab left open overnight picks
+up a deploy without being touched. Mid-ride the version label turns yellow and
+offers a tap instead, rather than wiping the trail.
 
 ## Controls
 
