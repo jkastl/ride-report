@@ -150,13 +150,12 @@
 <div id="canvas-wrap">
   <canvas id="canvas"></canvas>
   <button id="start-btn">Enable Motion</button>
-  <span id="version">v1.11 2026-09-18</span>
+  <span id="version">v1.12 2026-09-18</span>
   <div id="controls">
     <button class="ctrl-btn" id="btn-clear">Clear</button>
     <button class="ctrl-btn" id="btn-pause">Pause</button>
     <button class="ctrl-btn on" id="btn-smooth">Smooth</button>
     <button class="ctrl-btn on" id="btn-invert">Invert</button>
-    <button class="ctrl-btn on" id="btn-curve">Curve</button>
     <button class="ctrl-btn" id="btn-wake">Awake</button>
     <button class="ctrl-btn" id="btn-raw">Raw #s</button>
   </div>
@@ -194,13 +193,11 @@
   const btnPause  = document.getElementById('btn-pause');
   const btnSmooth = document.getElementById('btn-smooth');
   const btnInvert = document.getElementById('btn-invert');
-  const btnCurve  = document.getElementById('btn-curve');
   const btnWake   = document.getElementById('btn-wake');
   const btnRaw    = document.getElementById('btn-raw');
 
   const G = 9.81;
   const MAX_G = 0.5;
-  const CURVE_EXP = 0.55;
   const HISTORY_MS = 15000;
   const CAP = 2400;
   const MAX_RENDER_POINTS = 360;
@@ -233,7 +230,7 @@
   const bgCtx = bg.getContext('2d', { alpha: false });
 
   let started = false, paused = false, hidden = false;
-  let optSmooth = true, optInvert = true, optCurve = true, optRaw = false, optWake = false;
+  let optSmooth = true, optInvert = true, optRaw = false, optWake = false;
   let cx = 0, cy = 0, radius = 1, dpr = 1;
   let curX = 0, curY = 0, curZ = 0;
   let gravX = 0, gravY = 0, gravZ = 0, gravInit = false;
@@ -281,9 +278,7 @@
   }
 
   function radiusPx(magG) {
-    if (magG <= 0) return 0;
-    if (!optCurve) return magG / MAX_G * radius;
-    return Math.pow(magG / MAX_G, CURVE_EXP) * radius;
+    return magG > 0 ? magG / MAX_G * radius : 0;
   }
 
   function projectX(x, mag, r) {
@@ -336,7 +331,7 @@
     bgCtx.textAlign = 'center';
     bgCtx.fillText('+Y', cx, 14 * dpr);
 
-    const rings = [0.05, 0.12, 0.3, MAX_G];
+    const rings = [0.12, 0.3, MAX_G];
     rings.forEach(r => {
       const pr = radiusPx(r);
       bgCtx.beginPath();
@@ -649,7 +644,6 @@
   }
   makeToggle(btnSmooth, () => optSmooth, v => { optSmooth = v; });
   makeToggle(btnInvert, () => optInvert, v => { optInvert = v; });
-  makeToggle(btnCurve, () => optCurve, v => { optCurve = v; renderBackground(); });
   makeToggle(btnRaw, () => optRaw, v => {
     optRaw = v;
     readout.classList.toggle('hidden', !optRaw);

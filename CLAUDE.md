@@ -18,9 +18,8 @@ Hosted on GitHub Pages from the `main` branch root.
   - Z axis: vertical (shown in readout only)
 - Falls back to `accelerationIncludingGravity` with a gravity high-pass when `acceleration` is unavailable
 - Draws a color-gradient trail (blue=old → red=current) with a pulsing dot at the head
-- Optional non-linear radial scale (`Curve`) so small bumps use more of the canvas
 - Live numeric readout at the bottom (`Raw #s`)
-- Clear, Pause, Smooth, Invert, Curve, Awake (screen wake lock) and Raw #s controls
+- Clear, Pause, Smooth, Invert, Awake (screen wake lock) and Raw #s controls
 
 ## Development
 
