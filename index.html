@@ -169,7 +169,7 @@
 <div id="canvas-wrap">
   <canvas id="canvas"></canvas>
   <button id="start-btn">Enable Motion</button>
-  <span id="version">v1.26 2026-09-18</span>
+  <span id="version">v1.27 2026-09-18</span>
   <div id="controls">
     <div class="ctrl-row">
       <button class="ctrl-btn" id="btn-clear">Clear Trail</button>
@@ -318,10 +318,20 @@
   }
 
   function currentScreenAngle() {
+    let angle = null;
     const so = window.screen && screen.orientation;
-    if (so && typeof so.angle === 'number') return (so.angle % 360 + 360) % 360;
-    if (typeof window.orientation === 'number') return (window.orientation % 360 + 360) % 360;
-    return 0;
+    if (so && typeof so.angle === 'number') angle = so.angle;
+    else if (typeof window.orientation === 'number') angle = window.orientation;
+
+    const landscape = window.innerWidth > window.innerHeight;
+    if (angle === null) return landscape ? 90 : 0;
+
+    angle = (angle % 360 + 360) % 360;
+    // A tablet whose natural orientation is landscape reports 0 there, while
+    // iOS keeps reporting motion in the portrait frame. The viewport shape is
+    // the only witness to that gap, so reconcile against it.
+    const quarter = angle === 90 || angle === 270;
+    return landscape === quarter ? angle : (angle + 270) % 360;
   }
 
   // The motion axes are fixed to the hardware and ignore screen rotation, so
@@ -345,6 +355,7 @@
     const r = screenAngle * Math.PI / 180;
     rotC = Math.cos(r);
     rotS = Math.sin(r);
+    showVersion();
     redrawIfIdle();
   }
 
@@ -791,10 +802,12 @@
     }
   });
 
+  // iOS fires orientationchange before the viewport reflows, so the angle is
+  // resolved again once the new dimensions are readable.
   function onResize() {
     applyScreenAngle();
     clearTimeout(resizeTimer);
-    resizeTimer = setTimeout(resizeCanvas, 120);
+    resizeTimer = setTimeout(() => { applyScreenAngle(); resizeCanvas(); }, 120);
   }
   window.addEventListener('resize', onResize);
   window.addEventListener('orientationchange', onResize);
@@ -802,8 +815,14 @@
     screen.orientation.addEventListener('change', applyScreenAngle);
   }
 
-  const localVersion = (versionEl.textContent.match(/v[\d.]+/) || [])[0];
+  const versionText = versionEl.textContent.trim();
+  const localVersion = (versionText.match(/v[\d.]+/) || [])[0];
   let lastUpdateCheck = 0, updateOffered = false;
+
+  function showVersion() {
+    if (updateOffered) return;
+    versionEl.textContent = versionText + ' \u00b7 ' + screenAngle + '\u00b0';
+  }
 
   function storedReload() {
     try { return sessionStorage.getItem('rr-reloaded'); } catch (e) { return null; }
@@ -845,6 +864,7 @@
 
   startBtn.addEventListener('click', requestPermission);
   applyScreenAngle();
+  showVersion();
   resizeCanvas();
   checkForUpdate();
   setInterval(checkForUpdate, UPDATE_EVERY_MS);

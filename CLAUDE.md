@@ -21,9 +21,13 @@ Hosted on GitHub Pages from the `main` branch root.
 - Live numeric readout at the bottom (`Raw Data`), showing the same values the
   trail is drawn from, so it follows `Smoothing` and the noise floor
 - Soft noise floor: magnitudes below 0.01G shrink to zero
-- Motion axes are fixed to the hardware, so X/Y are rotated by
-  `screen.orientation.angle` (falling back to `window.orientation`) into the
-  screen frame; the buffered trail is rotated too, so history survives a turn
+- Motion axes are fixed to the hardware, so X/Y are rotated into the screen
+  frame; the buffered trail is rotated too, so history survives a turn
+- The angle comes from `screen.orientation.angle`, then `window.orientation`,
+  reconciled against the viewport aspect: a tablet whose natural orientation is
+  landscape reports 0 there while motion stays in the portrait frame, and with
+  no API at all (desktop-class Safari) the aspect is the only signal
+- The resolved angle is appended to the version label as a diagnostic
 - Clear Trail, Pause, Keep Awake (screen wake lock), 🔋 Saver, Smoothing,
   Invert Axes and Raw Data controls, two rows
 - 🔋 Saver toggles the render tier: off (default) is 60fps / DPR 3 / 480 trail points

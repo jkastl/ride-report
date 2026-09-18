@@ -32,6 +32,12 @@ rotated with them, so turning the phone or tablet mid-ride keeps past bumps
 pointing the way they actually happened. Z is normal to the screen either way
 and is left alone.
 
+The angle is read from `screen.orientation.angle`, then `window.orientation`,
+and reconciled against the viewport shape — a tablet with a natural landscape
+orientation reports 0 while lying in landscape, and desktop-class Safari offers
+neither API. The resolved angle is shown next to the version label, so a wrong
+one is visible rather than inferred.
+
 ## Staying current
 
 The page checks itself for a newer version on load, whenever the tab is
