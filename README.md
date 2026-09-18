@@ -37,14 +37,6 @@ The angle is read from `window.orientation`, falling back to
 `screen.orientation.angle` at 0 no matter how the iPad is held, so asking it
 first returns a confident zero and the rotation never happens.
 
-## Staying current
-
-The page checks itself for a newer version on load, whenever the tab is
-refocused, and every 5 minutes while open, then reloads under a fresh URL if it
-finds one — so a cached copy heals itself, and a tab left open overnight picks
-up a deploy without being touched. Mid-ride the version label turns yellow and
-offers a tap instead, rather than wiping the trail.
-
 ## Controls
 
 | Button | What it does |

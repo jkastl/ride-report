@@ -31,11 +31,6 @@ Hosted on GitHub Pages from the `main` branch root.
 - 🔋 Saver toggles the render tier: off (default) is 60fps / DPR 3 / 480 trail points
   / 20Hz readout, on is 30fps / DPR 2 / 360 points / 10Hz readout
 
-- Re-requests itself under a cache-busting URL and compares the version label, on
-  load, on refocus and every 5 minutes (throttled to one check a minute); reloads
-  if a newer one is published, or offers a tap-to-update on the version label when
-  a ride is already in progress
-
 ## Development
 
 Edit `index.html` directly. Test on a real device (simulator won't fire motion events).
