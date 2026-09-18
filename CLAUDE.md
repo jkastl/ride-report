@@ -12,10 +12,10 @@ Hosted on GitHub Pages from the `main` branch root.
 
 - Requests `DeviceMotionEvent` permission (required on iOS 13+)
 - Reads `acceleration` (gravity-excluded) from the motion sensor
-- Dead-reckons an X/Y position on the canvas, as if the phone is lying flat on a table
+- Plots acceleration directly on the canvas (no integration), as if the phone is lying flat on a table
   - X axis: left ↔ right
   - Y axis: forward ↔ back
-  - Z axis: vertical (shown in readout only)
+  - Z axis: vertical (bar on the right edge, plus the readout)
 - Falls back to `accelerationIncludingGravity` with a gravity high-pass when `acceleration` is unavailable
 - Draws a color-gradient trail (blue=old → red=current) with a pulsing dot at the head
 - Live numeric readout at the bottom (`Raw`)
