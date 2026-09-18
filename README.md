@@ -32,7 +32,20 @@ fuzzy star. A single hard jolt throws a red streak toward one edge.
 | **Smooth** | Exponential smoothing, ~0.2s time constant. Off shows the raw signal |
 | **Invert** | Plot the direction you're thrown rather than the direction the aircraft accelerates |
 | **Awake** | Hold a screen wake lock so the phone doesn't sleep mid-flight. Off by default |
+| **Saver** | Halve the render cost for long unplugged rides. Off by default |
 | **Raw** | Show the live numeric X/Y/Z readout along the bottom |
+
+### Render tiers
+
+`Saver` picks how hard the phone works to draw the trail. Everything else —
+sampling, smoothing, the peak and the turbulence label — is identical in both.
+
+| | Saver off (default) | Saver on |
+| --- | --- | --- |
+| Frame rate | 60fps | 30fps |
+| Device pixel ratio | up to 3 | up to 2 |
+| Trail points | 480 in 24 stroke batches | 360 in 18 |
+| Readout refresh | 20Hz | 10Hz |
 
 ## Turbulence levels
 

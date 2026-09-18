@@ -118,6 +118,7 @@
     right: calc(8px + var(--safe-r));
     left: calc(8px + var(--safe-l));
     display: flex;
+    flex-direction: column;
     gap: 4px;
     opacity: 0;
     pointer-events: none;
@@ -125,6 +126,10 @@
   }
   #controls.visible { opacity: 1; pointer-events: auto; }
   #controls.above-readout { --safe-b: 0px; }
+  .ctrl-row {
+    display: flex;
+    gap: 4px;
+  }
   .ctrl-btn {
     flex: 1 1 0;
     min-width: 0;
@@ -133,7 +138,7 @@
     border: 1px solid rgba(255,255,255,0.20);
     border-radius: 8px;
     padding: 7px 2px;
-    font-size: clamp(9.5px, 2.9vw, 11px);
+    font-size: clamp(10px, 3.4vw, 12.5px);
     font-family: inherit;
     white-space: nowrap;
     overflow: hidden;
@@ -159,14 +164,19 @@
 <div id="canvas-wrap">
   <canvas id="canvas"></canvas>
   <button id="start-btn">Enable Motion</button>
-  <span id="version">v1.17 2026-09-18</span>
+  <span id="version">v1.18 2026-09-18</span>
   <div id="controls">
-    <button class="ctrl-btn" id="btn-clear">Clear</button>
-    <button class="ctrl-btn" id="btn-pause">Pause</button>
-    <button class="ctrl-btn on" id="btn-smooth">Smooth</button>
-    <button class="ctrl-btn on" id="btn-invert">Invert</button>
-    <button class="ctrl-btn" id="btn-wake">Awake</button>
-    <button class="ctrl-btn" id="btn-raw">Raw</button>
+    <div class="ctrl-row">
+      <button class="ctrl-btn" id="btn-clear">Clear</button>
+      <button class="ctrl-btn" id="btn-pause">Pause</button>
+      <button class="ctrl-btn" id="btn-wake">Awake</button>
+      <button class="ctrl-btn" id="btn-saver">Saver</button>
+    </div>
+    <div class="ctrl-row">
+      <button class="ctrl-btn on" id="btn-smooth">Smooth</button>
+      <button class="ctrl-btn on" id="btn-invert">Invert</button>
+      <button class="ctrl-btn" id="btn-raw">Raw</button>
+    </div>
   </div>
 </div>
 
@@ -204,22 +214,33 @@
   const btnInvert = document.getElementById('btn-invert');
   const btnWake   = document.getElementById('btn-wake');
   const btnRaw    = document.getElementById('btn-raw');
+  const btnSaver  = document.getElementById('btn-saver');
 
   const G = 9.81;
   const MAX_G = 0.5;
   const FLOOR_G = 0.01;
   const HISTORY_MS = 15000;
   const CAP = 2400;
-  const MAX_RENDER_POINTS = 360;
-  const TRAIL_BUCKETS = 18;
-  const MAX_DPR = 2;
-  const FRAME_MS = 1000 / 30;
   const SMOOTH_TAU = 0.2;
   const GRAVITY_TAU = 1.0;
   const PEAK_TAU = 3.3;
-  const READOUT_MS = 100;
   const SENSOR_TIMEOUT_MS = 2500;
   const STALL_MS = 3000;
+
+  const TIERS = {
+    high:  { frameMs: 1000 / 60, maxDpr: 3, points: 480, buckets: 24, readoutMs: 50 },
+    saver: { frameMs: 1000 / 30, maxDpr: 2, points: 360, buckets: 18, readoutMs: 100 },
+  };
+  const RENDER_POINTS_MAX = 480;
+  // Without slack a 16.67ms rAF tick loses the race against a 16.67ms budget
+  // and every second frame is dropped, halving the tier back to 30fps.
+  const FRAME_SLACK_MS = 2;
+
+  let frameMs = TIERS.high.frameMs;
+  let maxDpr = TIERS.high.maxDpr;
+  let renderPoints = TIERS.high.points;
+  let trailBuckets = TIERS.high.buckets;
+  let readoutMs = TIERS.high.readoutMs;
 
   const LEVELS = [
     { label: 'Severe',   min: 0.30, color: '#ff5c5c' },
@@ -233,14 +254,14 @@
   const bufT = new Float64Array(CAP);
   let head = 0, count = 0;
 
-  const ptX = new Float32Array(MAX_RENDER_POINTS);
-  const ptY = new Float32Array(MAX_RENDER_POINTS);
+  const ptX = new Float32Array(RENDER_POINTS_MAX);
+  const ptY = new Float32Array(RENDER_POINTS_MAX);
 
   const bg = document.createElement('canvas');
   const bgCtx = bg.getContext('2d', { alpha: false });
 
   let started = false, paused = false, hidden = false;
-  let optSmooth = true, optInvert = true, optRaw = false, optWake = false;
+  let optSmooth = true, optInvert = true, optRaw = false, optWake = false, optSaver = false;
   let cx = 0, cy = 0, radius = 1, dpr = 1;
   let curX = 0, curY = 0, curZ = 0;
   let gravX = 0, gravY = 0, gravZ = 0, gravInit = false;
@@ -317,7 +338,7 @@
     const wrap = canvas.parentElement;
     const w = wrap.clientWidth, h = wrap.clientHeight;
     if (!w || !h) return;
-    dpr = Math.min(window.devicePixelRatio || 1, MAX_DPR);
+    dpr = Math.min(window.devicePixelRatio || 1, maxDpr);
     canvas.width = bg.width = Math.round(w * dpr);
     canvas.height = bg.height = Math.round(h * dpr);
     canvas.style.width = w + 'px';
@@ -375,7 +396,7 @@
     if (count >= 2) {
       // Every sample contributes: each output point is the mean of its slice
       // of the buffer, so discarded samples cannot alias into the trail.
-      const m = Math.min(count, MAX_RENDER_POINTS);
+      const m = Math.min(count, renderPoints);
       for (let j = 0; j < m; j++) {
         const lo = Math.floor(j * count / m);
         const hi = Math.max(Math.floor((j + 1) * count / m), lo + 1);
@@ -409,7 +430,7 @@
   function drawTrail(m) {
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
-    const buckets = Math.min(TRAIL_BUCKETS, m - 1);
+    const buckets = Math.min(trailBuckets, m - 1);
 
     for (let b = 0; b < buckets; b++) {
       const from = 1 + Math.floor(b * (m - 1) / buckets);
@@ -558,7 +579,7 @@
 
     push(px, py, now);
 
-    if (optRaw && now - lastReadout >= READOUT_MS) {
+    if (optRaw && now - lastReadout >= readoutMs) {
       lastReadout = now;
       numX.textContent = fmt(curX);
       numY.textContent = fmt(curY);
@@ -569,7 +590,7 @@
   function loop(ts) {
     animId = requestAnimationFrame(loop);
     const elapsed = ts - lastFrame;
-    if (elapsed < FRAME_MS) return;
+    if (elapsed < frameMs - FRAME_SLACK_MS) return;
     lastFrame = ts;
     draw(Math.min(elapsed / 1000, 0.25));
     if (!stalled && !sensorDead && lastSample && ts - lastSample > STALL_MS) {
@@ -650,6 +671,16 @@
       });
   }
 
+  function applyTier() {
+    const t = optSaver ? TIERS.saver : TIERS.high;
+    frameMs = t.frameMs;
+    maxDpr = t.maxDpr;
+    renderPoints = t.points;
+    trailBuckets = t.buckets;
+    readoutMs = t.readoutMs;
+    resizeCanvas();
+  }
+
   function redrawIfIdle() {
     if (started && animId === null && !hidden) draw(0);
   }
@@ -675,6 +706,10 @@
     readout.classList.toggle('hidden', !optRaw);
     controls.classList.toggle('above-readout', optRaw);
     resizeCanvas();
+  });
+  makeToggle(btnSaver, () => optSaver, v => {
+    optSaver = v;
+    applyTier();
   });
   makeToggle(btnWake, () => optWake, v => {
     optWake = v;
