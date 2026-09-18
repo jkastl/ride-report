@@ -3,9 +3,7 @@
 A single-page ride-quality meter for your phone. Lay it flat on a tray table and it
 draws what the aircraft is doing to you, live.
 
-(The repo is still named `turbulence` — the Pages URL below depends on it.)
-
-**[jkastl.github.io/turbulence](https://jkastl.github.io/turbulence/)**
+**[jkastl.github.io/ride-report](https://jkastl.github.io/ride-report/)**
 
 No build step, no dependencies, no network calls, no data leaves the device.
 The whole app is one file: [`index.html`](index.html).
