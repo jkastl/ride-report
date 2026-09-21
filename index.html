@@ -164,7 +164,7 @@
 <div id="canvas-wrap">
   <canvas id="canvas"></canvas>
   <button id="start-btn">Enable Motion</button>
-  <span id="version">v1.32 2026-09-18</span>
+  <span id="version">v1.33 2026-09-21</span>
   <div id="controls">
     <div class="ctrl-row">
       <button class="ctrl-btn" id="btn-clear">Clear Trail</button>
@@ -595,9 +595,11 @@
       ax = rx;
     }
 
-    // iOS reports motion negated against the spec. X and Y hide it — the screen
-    // rotation absorbs the 180 — but Z has nothing to hide behind and came out
-    // upside down against the other two.
+    // iOS reports device motion negated against the spec, on every axis. No
+    // choice of screen angle can undo it, since negation commutes with the
+    // rotation, so it has to come off here.
+    ax = -ax;
+    ay = -ay;
     az = -az;
 
     nullSamples = 0;

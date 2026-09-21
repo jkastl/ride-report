@@ -25,9 +25,9 @@ fuzzy star. A single hard jolt throws a red streak toward one edge.
 
 ## Orientation
 
-Z is negated as it arrives. iOS reports device motion with the opposite sign to
-the spec; for X and Y the screen rotation absorbs that 180° and it never shows,
-but Z has no rotation to hide behind and read upside down against the other two.
+All three axes are negated as they arrive. iOS reports device motion with the
+opposite sign to the spec, and no choice of screen angle undoes it — negation
+commutes with the rotation, so the 180° survives every orientation.
 
 The motion sensor reports in the device's own frame, which does not turn when
 the screen does — so in landscape the plot would otherwise sit 90° off. X and Y
