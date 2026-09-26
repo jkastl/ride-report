@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
 <meta name="color-scheme" content="dark">
 <title>Ride Report</title>
+<meta name="description" content="A ride-quality meter for your phone: lay it flat on a tray table and watch the turbulence.">
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -164,18 +165,19 @@
 <div id="canvas-wrap">
   <canvas id="canvas"></canvas>
   <button id="start-btn">Enable Motion</button>
-  <span id="version">v1.33 2026-09-21</span>
+  <!-- Version and date are bumped by hand; see README.md. -->
+  <span id="version">v1.34.0 · 2026-09-26</span>
   <div id="controls">
     <div class="ctrl-row">
       <button class="ctrl-btn" id="btn-clear">Clear Trail</button>
       <button class="ctrl-btn" id="btn-pause">Pause</button>
-      <button class="ctrl-btn" id="btn-wake">Keep Awake</button>
-      <button class="ctrl-btn" id="btn-saver">🔋 Saver</button>
+      <button class="ctrl-btn" id="btn-wake" aria-pressed="false">Keep Awake</button>
+      <button class="ctrl-btn" id="btn-saver" aria-pressed="false">🔋 Saver</button>
     </div>
     <div class="ctrl-row">
-      <button class="ctrl-btn on" id="btn-smooth">Smoothing</button>
-      <button class="ctrl-btn on" id="btn-invert">Invert Axes</button>
-      <button class="ctrl-btn" id="btn-raw">Raw Data</button>
+      <button class="ctrl-btn on" id="btn-smooth" aria-pressed="true">Smoothing</button>
+      <button class="ctrl-btn on" id="btn-invert" aria-pressed="true">Invert Axes</button>
+      <button class="ctrl-btn" id="btn-raw" aria-pressed="false">Raw Data</button>
     </div>
   </div>
 </div>
@@ -231,7 +233,7 @@
     high:  { frameMs: 1000 / 60, maxDpr: 3, points: 480, buckets: 24, readoutMs: 50 },
     saver: { frameMs: 1000 / 30, maxDpr: 2, points: 360, buckets: 18, readoutMs: 100 },
   };
-  const RENDER_POINTS_MAX = 480;
+  const RENDER_POINTS_MAX = Math.max(TIERS.high.points, TIERS.saver.points);
   // Without slack a 16.67ms rAF tick loses the race against a 16.67ms budget
   // and every second frame is dropped, halving the tier back to 30fps.
   const FRAME_SLACK_MS = 2;
@@ -272,7 +274,7 @@
   let listening = false, fallback = false, nullSamples = 0;
   let sensorDead = false, stalled = false;
   let flashTimer = null;
-  let wakeLock = null;
+  let wakeLock = null, wakePending = false;
 
   function setStatus(text, cls) {
     statusEl.textContent = text;
@@ -704,16 +706,21 @@
   }
 
   function acquireWakeLock() {
-    if (!('wakeLock' in navigator) || wakeLock || hidden) return;
+    // wakePending: a quick off/on while a request is in flight would otherwise
+    // start a second request and leak whichever lock resolves first.
+    if (!('wakeLock' in navigator) || wakeLock || wakePending || hidden) return;
+    wakePending = true;
     navigator.wakeLock.request('screen')
       .then(lock => {
-        if (!optWake) { lock.release().catch(() => {}); return; }
+        wakePending = false;
+        if (!optWake || hidden) { lock.release().catch(() => {}); return; }
         wakeLock = lock;
         lock.addEventListener('release', () => { wakeLock = null; });
       })
       .catch(() => {
+        wakePending = false;
         optWake = false;
-        btnWake.classList.remove('on');
+        setOn(btnWake, false);
         flash('Wake lock refused', 'warn');
       });
   }
@@ -739,10 +746,15 @@
     redrawIfIdle();
   });
 
+  function setOn(btn, on) {
+    btn.classList.toggle('on', on);
+    btn.setAttribute('aria-pressed', on);
+  }
+
   function makeToggle(btn, get, set) {
     btn.addEventListener('click', () => {
       set(!get());
-      btn.classList.toggle('on', get());
+      setOn(btn, get());
       redrawIfIdle();
     });
   }

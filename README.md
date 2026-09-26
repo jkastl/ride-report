@@ -96,9 +96,11 @@ Worth knowing if the numbers look off:
   200Hz Android behave identically. Sample counts are not used as a proxy for time.
 - A soft noise floor shrinks magnitudes toward zero by 0.01G. This kills sensor jitter at
   rest without making the dot snap as real bumps cross the threshold.
-- The trail is drawn at up to 360 points regardless of sample rate. Each point is the
-  **mean** of its slice of the buffer, not a sampled representative, so nothing aliases.
-- Rendering is capped at 30fps and stops entirely while paused or backgrounded.
+- The trail is drawn at up to 480 points (360 with 🔋 Saver) regardless of sample rate.
+  Each point is the **mean** of its slice of the buffer, not a sampled representative,
+  so nothing aliases.
+- Rendering runs at 60fps (30fps with 🔋 Saver) and stops entirely while paused or
+  backgrounded.
 
 ## Development
 
@@ -112,6 +114,24 @@ Push to `main` to deploy — GitHub Pages serves the repo root.
 
 Real testing requires a real device. Simulators don't fire motion events, and a phone
 sitting on a desk only tells you what the noise floor looks like.
+
+- **Keep it one file.** Everything stays in `index.html`: no package manager, build
+  step, tests, linters or CI.
+- **Commit straight to `main`.** No feature branches or pull requests unless there's a
+  reason for one.
+
+## Versioning
+
+The version and date in the top-left corner (`#version` in `index.html`) are **updated
+by hand**. Nothing bumps them automatically. Change both in the same commit as the
+change they describe, add an entry to [`CHANGELOG.md`](CHANGELOG.md), and follow
+[semver](https://semver.org/):
+
+- **Patch** (`1.34.0` → `1.34.1`): bug fixes and wording tweaks.
+- **Minor** (`1.34.0` → `1.35.0`): new features, controls or signal-handling changes.
+- **Major** (`1.34.0` → `2.0.0`): a redesign, or a change to what the plot means.
+
+The date is the day of the change, in `YYYY-MM-DD` format.
 
 ## Known limitations
 
