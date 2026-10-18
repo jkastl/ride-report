@@ -3,6 +3,12 @@
 Versions follow [semver](https://semver.org/). See [README.md](README.md#versioning).
 Releases before 1.34.0 used two-part versions and are listed as they were shown.
 
+## 1.34.1 · 2026-10-18
+
+### Changed
+- Pages now record an anonymous visit count (GoatCounter, no cookies) and carry a canonical
+  link and link-preview tags. The README says the count is the only network call.
+
 ## 1.34.0 · 2026-09-26
 
 ### Fixed

@@ -6,6 +6,26 @@
 <meta name="color-scheme" content="dark">
 <title>Ride Report</title>
 <meta name="description" content="A ride-quality meter for your phone: lay it flat on a tray table and watch the turbulence.">
+<link rel="canonical" href="https://jkastl.github.io/ride-report/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Apps and demos">
+<meta property="og:title" content="Ride Report">
+<meta property="og:description" content="A ride-quality meter for your phone: lay it flat on a tray table and watch the turbulence.">
+<meta property="og:url" content="https://jkastl.github.io/ride-report/">
+<meta name="twitter:card" content="summary">
+<script id="visit-count">
+  // Anonymous visit count (GoatCounter, no cookies). Does nothing off github.io.
+  (function () {
+    if (!/\.github\.io$/.test(location.hostname)) return;
+    var s = document.createElement("script");
+    s.async = true;
+    s.src = "https://gc.zgo.at/count.v4.js";
+    s.integrity = "sha384-nRw6qfbWyJha9LhsOtSb2YJDyZdKvvCFh0fJYlkquSFjUxp9FVNugbfy8q1jdxI+";
+    s.crossOrigin = "anonymous";
+    s.setAttribute("data-goatcounter", "https://jkastl.goatcounter.com/count");
+    document.head.appendChild(s);
+  })();
+</script>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -166,7 +186,7 @@
   <canvas id="canvas"></canvas>
   <button id="start-btn">Enable Motion</button>
   <!-- Version and date are bumped by hand; see README.md. -->
-  <span id="version">v1.34.0 · 2026-09-26</span>
+  <span id="version">v1.34.1 · 2026-10-18</span>
   <div id="controls">
     <div class="ctrl-row">
       <button class="ctrl-btn" id="btn-clear">Clear Trail</button>
