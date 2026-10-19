@@ -5,8 +5,8 @@ draws what the aircraft is doing to you, live.
 
 **[jkastl.github.io/ride-report](https://jkastl.github.io/ride-report/)**
 
-No build step, no dependencies, no network calls beyond an anonymous visit count
-([GoatCounter](https://www.goatcounter.com/), no cookies), and no ride data leaves the device.
+No build step, no dependencies, no backend, and no ride data leaves the device. The page loads an
+anonymous [GoatCounter](https://www.goatcounter.com/) visit counter (no cookies) and works without it.
 The whole app is one file: [`index.html`](index.html).
 
 ## What you're looking at
